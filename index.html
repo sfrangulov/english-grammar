@@ -1095,16 +1095,132 @@ const ART = [
   "~The~ Thames is in London.|Названия рек — с <b>the</b>.",
   "My sister is ~an~ artist.|Перед гласным звуком — <b>an</b>."
 ];
-function makeArticleItem(i){
-  const [raw, note] = ART[i].split('|');
+
+/* ================== артикли: генератор ==================
+   92 готовых предложения дают всего восемь наборов ответов и начинают
+   повторяться примерно с 88-го задания. Правила ниже собирают предложение
+   из лексики, поэтому поток артиклей тоже перестаёт кончаться.
+   Требование к каждому правилу: верный артикль ровно один. Если в рамку
+   влезает второй допустимый вариант — правило нельзя добавлять.
+   a или an выбирается по ЗВУКУ и записано в лексике флагом an, а не
+   угадывается по букве: hour → an, university → a. */
+const A_SUBJ = ['My brother','My sister','My friend','My father','My mother','Tom','Anna','Kate','Mr Brown'];
+const A_PROF = [{w:'teacher'},{w:'doctor'},{w:'driver'},{w:'nurse'},{w:'writer'},{w:'singer'},
+                {w:'dentist'},{w:'pilot'},{w:'engineer',an:1},{w:'artist',an:1},{w:'actor',an:1},
+                {w:'architect',an:1},{w:'officer',an:1},{w:'economist',an:1}];
+const A_THING = [{w:'cat'},{w:'dog'},{w:'bird'},{w:'car'},{w:'bike'},{w:'book'},{w:'flower'},
+                 {w:'box'},{w:'apple',an:1},{w:'orange',an:1},{w:'egg',an:1},{w:'umbrella',an:1}];
+const A_UNIQUE = ['sun','moon','sky'];
+const A_TRANSPORT = ['bus','car','train','plane','bike','taxi','boat'];
+const A_MEAL = ['breakfast','lunch','dinner','supper'];
+const MEAL_TIME = {breakfast:['seven','eight','half past seven'], lunch:['one','two','half past twelve'],
+                   dinner:['six','seven','half past six'], supper:['eight','nine']};
+const A_INSTR = ['piano','guitar','violin','flute'];
+const A_SPORT = ['football','tennis','basketball','volleyball','hockey','chess'];
+const A_LANG = ['English','French','German','Spanish','Italian','Chinese'];
+const A_MASS = ['music','coffee','tea','milk','bread','cheese','snow','rain'];
+const A_PLURAL = ['cats','dogs','birds','flowers','apples','books'];
+const A_WATER = ['Thames','Volga','Nile','Black Sea','Pacific Ocean','Atlantic Ocean'];
+const A_COUNTRY = ['France','Italy','Spain','Germany','Japan','Poland','Turkey','Greece'];
+const A_COUNTRY_THE = ['USA','UK','Netherlands','Philippines'];
+const A_ORD = ['first','second','third','fourth','fifth'];
+const A_SUP = [{s:'This is', a:'best', n:'film', t:'in the world'},
+               {s:'He is',   a:'tallest', n:'boy', t:'in our class'},
+               {s:'This is', a:'biggest', n:'city', t:'in the country'},
+               {s:'This is', a:'oldest', n:'house', t:'in our street'},
+               {s:'This is', a:'longest', n:'river', t:'in Europe'}];
+const A_DAYPART = ['morning','afternoon','evening'];
+/* ловушка «звук, а не буква» — у каждой пары своя рамка */
+const A_SOUND = [
+  'We waited for ~an~ hour.|Артикль выбирается по <b>звуку</b>, а не по букве: в <b>hour</b> буква h не читается, слышится гласный — поэтому <b>an</b>.',
+  'He gave me ~an~ honest answer.|В <b>honest</b> буква h не читается — слышится гласный, поэтому <b>an</b>.',
+  'She is ~a~ university student.|<b>university</b> начинается со звука [ju] — он согласный, поэтому <b>a</b>, а не an.',
+  'This is ~a~ useful book.|<b>useful</b> начинается со звука [ju] — согласного, поэтому <b>a</b>.',
+  'They live in ~a~ European city.|<b>European</b> начинается со звука [ju] — согласного, поэтому <b>a</b>.',
+  'She wears ~a~ uniform at school.|<b>uniform</b> начинается со звука [ju] — согласного, поэтому <b>a</b>.'
+];
+/* учреждение важнее здания: go to school = учиться, а не «прийти в здание» */
+const A_PLACE = [
+  'The children go to ~-~ school every day.|<b>go to school</b> — про учёбу, а не про здание: артикля нет.',
+  'My father goes to ~-~ work at eight.|<b>go to work</b> — устойчивое сочетание без артикля.',
+  'I go to ~-~ bed at ten.|<b>go to bed</b> — устойчивое сочетание без артикля.',
+  'We go to ~-~ class together.|<b>go to class</b> — про занятие, а не про комнату: артикля нет.'
+];
+
+const A = n => n.an ? 'an' : 'a';
+const AN_NOTE = n => n.an ? ' Перед гласным звуком — <b>an</b>.' : '';
+
+const ART_RULES = [
+  {id:'prof', make(){ const n = pick(A_PROF);
+    return pick(A_SUBJ) + ' is ~' + A(n) + '~ ' + n.w + '.|Профессия в единственном числе — <b>a / an</b>.' + AN_NOTE(n); }},
+
+  {id:'mention', make(){ const n = pick(A_THING);
+    return 'Yesterday I saw ~' + A(n) + '~ ' + n.w + '. ~The~ ' + n.w + ' was very big.'
+         + '|Первое упоминание — <b>' + A(n) + '</b>, повторное — <b>the</b>: про этот же предмет уже известно.' + AN_NOTE(n); }},
+
+  {id:'unique', make(){ const w = pick(A_UNIQUE);
+    return 'Look at ~the~ ' + w + '!|Единственный в своём роде предмет — <b>the ' + w + '</b>.'; }},
+
+  {id:'transport', make(){
+    const w = pick(A_TRANSPORT), note = '|<b>by bus / by car / by train</b> — способ передвижения без артикля.';
+    return Math.random() < 0.5 ? pick(A_SUBJ) + ' goes to work by ~-~ ' + w + '.' + note
+                               : 'We usually travel by ~-~ ' + w + '.' + note; }},
+
+  {id:'meal', make(){ const m = pick(A_MEAL);
+    return 'We have ~-~ ' + m + ' at ' + pick(MEAL_TIME[m]) + '.|Названия приёмов пищи идут без артикля.'; }},
+
+  {id:'instrument', make(){ const w = pick(A_INSTR);
+    return pick(A_SUBJ) + ' plays ~the~ ' + w + ' very well.|Музыкальные инструменты — с <b>the</b>: play <b>the ' + w + '</b>.'; }},
+
+  {id:'sport', make(){ const w = pick(A_SPORT);
+    return pick(A_SUBJ) + ' plays ~-~ ' + w + ' every weekend.|Игры и виды спорта — без артикля: play <b>' + w + '</b>. Сравни: play <b>the</b> piano.'; }},
+
+  {id:'place', make(){ return pick(A_PLACE); }},
+
+  {id:'language', make(){ const w = pick(A_LANG);
+    return pick(A_SUBJ) + ' speaks ~-~ ' + w + ' very well.|Названия языков — без артикля: speak <b>' + w + '</b>.'; }},
+
+  {id:'plural', make(){ const w = pick(A_PLURAL);
+    return 'I like ~-~ ' + w + '.|Множественное число в общем смысле — без артикля: речь про всех <b>' + w + '</b>, а не про конкретных.'; }},
+
+  {id:'mass', make(){ const w = pick(A_MASS);
+    return 'I like ~-~ ' + w + '.|Неисчисляемое в общем смысле — без артикля: <b>' + w + '</b> не считается штуками.'; }},
+
+  {id:'water', make(){ const w = pick(A_WATER);
+    return 'We saw ~the~ ' + w + ' from the plane.|Реки, моря и океаны — с <b>the</b>: <b>the ' + w + '</b>.'; }},
+
+  {id:'country', make(){ const w = pick(A_COUNTRY);
+    return pick(A_SUBJ) + ' lives in ~-~ ' + w + '.|Названия большинства стран идут без артикля: in <b>' + w + '</b>.'; }},
+
+  {id:'country-the', make(){ const w = pick(A_COUNTRY_THE);
+    return pick(A_SUBJ) + ' lives in ~the~ ' + w + '.|Страны-исключения — с <b>the</b>: <b>the ' + w + '</b>. Сравни: in France, без артикля.'; }},
+
+  {id:'superlative', make(){ const x = pick(A_SUP);
+    return x.s + ' ~the~ ' + x.a + ' ' + x.n + ' ' + x.t + '.|Превосходная степень всегда с <b>the</b>: <b>the ' + x.a + '</b>.'; }},
+
+  {id:'ordinal', make(){ const w = pick(A_ORD);
+    return 'He lives on ~the~ ' + w + ' floor.|Порядковые числительные — с <b>the</b>: <b>the ' + w + '</b>.'; }},
+
+  {id:'sound', make(){ return pick(A_SOUND); }},
+
+  {id:'daypart', make(){
+    return Math.random() < 0.7
+      ? 'I read books in ~the~ ' + pick(A_DAYPART) + '.|<b>in the morning / afternoon / evening</b> — с артиклем.'
+      : 'I read books at ~-~ night.|<b>at night</b> — без артикля. Сравни: <b>in the</b> morning.'; }}
+];
+
+function articleFrom(src, sk){
+  const [raw, note] = src.split('|');
   const parts = [];
   raw.split('~').forEach((chunk,k)=>{
     if(k%2===0){ if(chunk) parts.push(T(chunk)); }
     else parts.push(B([chunk], ''));
   });
-  return {topic:'article', tag:'Артикли', label:'Артикли', sk:['a:'+i], parts, note,
-          ph:'Впиши a, an или the. Если артикль не нужен — поставь дефис «-».'};
+  return {topic:'article', tag:'Артикли', label:'Артикли', sk:[sk], parts, note,
+          ph:'Если артикль не нужен — поставь дефис «-».'};
 }
+function makeArticleItem(i){ return articleFrom(ART[i], 'a:' + i); }
+function makeArticleGen(){ const r = pick(ART_RULES); return articleFrom(r.make(), 'ar:' + r.id); }
 
 /* ==================================================================
    4. Поток заданий
@@ -1120,7 +1236,7 @@ function pickTopic(list){
 }
 function makeTopicItem(topic, cfg){
   return topic==='verb' ? makeVerbItem(cfg)
-       : topic==='article' ? makeArticleItem(rnd(ART.length))
+       : topic==='article' ? (Math.random() < 0.5 ? makeArticleGen() : makeArticleItem(rnd(ART.length)))
        : makePronounItem();
 }
 function buildItem(cfg, recent){
@@ -1660,6 +1776,46 @@ function selfTest(){
   /* маркеры-примеры для ошибочного времени обязаны существовать */
   TENSES_ALL.forEach(t=>{
     if(!markerHints({be:false, v:VERBS[0]}, t).length) out.push('FAIL нет маркеров-примеров для ' + t);
+  });
+
+  /* --- генератор артиклей: каждое правило обязано давать целое задание --- */
+  ART_RULES.forEach(r=>{
+    const notes = {};
+    for(let i=0;i<120;i++){
+      const src = r.make();
+      if(src.split('|').length !== 2){ out.push('FAIL правило ' + r.id + ': нет разбора'); break; }
+      if((src.split('|')[0].split('~').length - 1) % 2){ out.push('FAIL правило ' + r.id + ': непарный ~'); break; }
+      const it = articleFrom(src, 'ar:' + r.id);
+      const txt = it.parts.map(p => p.t === 'text' ? p.v : '□').join('');
+      if(!it.parts.some(p => p.t === 'blank')) { out.push('FAIL правило ' + r.id + ': нет пропуска'); break; }
+      if(!it.note)                             { out.push('FAIL правило ' + r.id + ': пустой разбор'); break; }
+      if(/\s\s|\s[.,!?]/.test(txt))            { out.push('FAIL правило ' + r.id + ': пробелы — "' + txt + '"'); break; }
+      if(/[#~%]/.test(txt))                    { out.push('FAIL правило ' + r.id + ': шаблон не раскрыт'); break; }
+      let bad = '';
+      it.parts.forEach(p=>{ if(p.t === 'blank' && ['a','an','the','The','-'].indexOf(p.a[0]) < 0) bad = p.a[0]; });
+      if(bad){ out.push('FAIL правило ' + r.id + ': не артикль в ответе — "' + bad + '"'); break; }
+      notes[it.note] = 1;
+    }
+    if(!Object.keys(notes).length) out.push('FAIL правило ' + r.id + ': ничего не собрало');
+  });
+  /* --- a / an ставится по звуку, но расхождение с буквой обязано быть осознанным --- */
+  const AN_EXC = {hour:1, honest:1, honour:1, heir:1, umbrella:1,
+                  university:0, uniform:0, useful:0, european:0, one:0, unit:0, user:0, unique:0};
+  [A_PROF, A_THING].forEach(list=>{
+    list.forEach(n=>{
+      const first = n.w.toLowerCase().split(' ')[0];
+      const listed = first in AN_EXC;
+      /* у слов на u и eu звук не выводится из буквы (umbrella [ʌ] → an, university [ju] → a),
+         поэтому такие слова обязаны стоять в AN_EXC явно, а не по умолчанию */
+      if(/^(u|eu)/.test(first) && !listed){
+        out.push('FAIL a/an у «' + n.w + '»: слово на u — звук по букве не угадывается, впиши его в AN_EXC');
+        return;
+      }
+      const want = listed ? !!AN_EXC[first] : /^[aeiou]/.test(first);
+      if(!!n.an !== want)
+        out.push('FAIL a/an у «' + n.w + '»: флаг an=' + (n.an ? 1 : 0) + ', ожидается ' + (want ? 1 : 0)
+                 + ' (если это исключение по звуку — впиши его в AN_EXC)');
+    });
   });
 
   const cfg = {topics:['verb','article','pronoun'], tenses:TENSES_ALL.slice(), forms:['aff','neg','q']};
