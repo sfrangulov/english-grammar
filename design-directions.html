@@ -1,0 +1,375 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Направления облика — тренажёр английской грамматики</title>
+<style>
+*,*::before,*::after{box-sizing:border-box}
+:root{
+  --page:#0C0D0F; --panel:#131519; --edge:#22252B;
+  --txt:#EDEFF2; --dim:#9BA1AA; --faint:#6E747D;
+  --hi:#7C9CFF;
+  --s1:4px;--s2:8px;--s3:12px;--s4:16px;--s5:24px;--s6:32px;--s7:48px;--s8:64px;
+  color-scheme:dark;
+}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0;background:var(--page);color:var(--txt);
+  font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,system-ui,sans-serif;
+  font-size:16px;line-height:1.6;-webkit-font-smoothing:antialiased;
+}
+.wrap{max-width:1120px;margin:0 auto;padding:var(--s8) var(--s5) var(--s8)}
+h1{font-size:2rem;line-height:1.2;letter-spacing:-.02em;margin:0 0 var(--s3);font-weight:600}
+.lede{color:var(--dim);max-width:70ch;margin:0 0 var(--s4)}
+.meta{color:var(--faint);font-size:.8125rem;margin:0 0 var(--s8);max-width:80ch}
+.meta code{background:var(--panel);padding:1px 6px;border-radius:4px;color:var(--dim)}
+
+.card{border:1px solid var(--edge);border-radius:16px;overflow:hidden;margin:0 0 var(--s7);background:var(--panel)}
+.card > header{padding:var(--s5) var(--s5) var(--s4);border-bottom:1px solid var(--edge)}
+.kicker{font-size:.6875rem;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin:0 0 var(--s2)}
+.kicker.lead{color:var(--hi)}
+.kicker.pick{color:#FFC145}
+.card h2{font-size:1.375rem;letter-spacing:-.015em;margin:0 0 var(--s2);font-weight:600}
+.case{color:var(--dim);margin:0;max-width:78ch}
+.body{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,1fr);gap:0}
+@media (max-width:900px){ .body{grid-template-columns:1fr} }
+.mock{padding:var(--s5);border-right:1px solid var(--edge);display:grid;place-items:center;min-height:340px}
+@media (max-width:900px){ .mock{border-right:0;border-bottom:1px solid var(--edge)} }
+.notes{padding:var(--s5);display:grid;gap:var(--s4);align-content:start}
+.notes h3{font-size:.6875rem;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);margin:0 0 var(--s2);font-weight:500}
+.notes p{margin:0;font-size:.9375rem;color:var(--dim)}
+.notes b{color:var(--txt);font-weight:600}
+.raise{border-left:2px solid var(--edge);padding-left:var(--s3);font-size:.875rem;color:var(--dim);margin:0}
+.raise b{color:var(--txt)}
+.risk{font-size:.875rem;color:#FFB4A6}
+.sw{display:flex;gap:var(--s2);flex-wrap:wrap;margin-top:var(--s2)}
+.sw i{width:34px;height:34px;border-radius:8px;display:block;border:1px solid rgba(255,255,255,.1)}
+
+/* ============ общая анатомия макета ============ */
+.scr{width:100%;max-width:440px;border-radius:12px;overflow:hidden}
+.scr .bar{display:flex;align-items:center;gap:10px;padding:10px 14px;font-size:11px}
+.scr .stage{padding:20px 18px 22px}
+.scr .q{margin:0 0 16px}
+.scr .bl{display:inline-block;min-width:74px}
+.scr .fb{margin-top:14px}
+.scr .btns{display:flex;gap:8px;margin-top:18px}
+.scr .btn{padding:8px 16px;font-size:12px;border-radius:8px;border:1px solid transparent;cursor:default}
+
+/* ---------- A. таблица спряжений ---------- */
+.a{--bg:#0E0F11;--sf:#16181B;--ink:#F2F3F5;--dim:#A1A6AD;--fnt:#7A8089;--ln:#23262B;--ac:#3B6BFF;--ok:#3ECF8E;--no:#FF6B5E;
+   background:var(--bg);color:var(--ink);font-family:"Helvetica Neue",Inter,-apple-system,system-ui,sans-serif}
+.a .bar{border-bottom:1px solid var(--ln);color:var(--fnt);letter-spacing:.1em;text-transform:uppercase;font-size:10px}
+.a .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:1px;background:var(--ln);border-bottom:1px solid var(--ln)}
+.a .grid span{background:var(--bg);padding:5px 6px;font-size:9px;letter-spacing:.06em;text-transform:uppercase;color:var(--fnt);text-align:center}
+.a .grid span.on{background:var(--ac);color:#fff}
+.a .q{font-size:19px;line-height:1.7;letter-spacing:-.01em}
+.a .bl{border-bottom:2px solid var(--ac);color:var(--ac);text-align:center}
+.a .hint{color:var(--fnt);font-size:13px}
+.a .fb{border-top:1px solid var(--ln);padding-top:12px}
+.a .vd{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--ok)}
+.a .ans{font-size:15px;margin:6px 0 6px}
+.a .ans em{font-style:normal;color:var(--ok);border-bottom:2px solid rgba(62,207,142,.4)}
+.a .nt{font-size:12px;color:var(--dim);line-height:1.55}
+.a .btn.p{background:var(--ac);color:#fff}
+.a .btn.s{background:transparent;border-color:var(--ln);color:var(--dim)}
+
+/* ---------- B. модульные полосы ---------- */
+.b{--bg:#101114;--ink:#F5F5F7;--dim:#A5A7AE;--ln:#26282E;--cy:#22D3EE;--mg:#F04DA1;--yl:#FDE047;--gr:#4ADE80;
+   background:var(--bg);color:var(--ink);font-family:Inter,-apple-system,"Segoe UI",system-ui,sans-serif}
+.b .bar{border-bottom:1px solid var(--ln);color:var(--dim);font-size:10px;letter-spacing:.08em;text-transform:uppercase}
+.b .bars{display:flex;height:8px}
+.b .bars i{flex:1}
+.b .q{font-size:19px;line-height:1.7}
+.b .bl{border-bottom:3px solid var(--cy);color:var(--cy);text-align:center}
+.b .hint{color:#7E828B;font-size:13px}
+.b .tagbar{display:inline-block;background:var(--yl);color:#101114;font-size:10px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:3px 8px}
+.b .vd{background:var(--gr);color:#101114;font-size:11px;font-weight:700;letter-spacing:.1em;text-transform:uppercase;padding:3px 9px;display:inline-block}
+.b .ans{font-size:15px;margin:8px 0 6px}
+.b .ans em{font-style:normal;font-weight:700;color:var(--gr)}
+.b .nt{font-size:12px;color:var(--dim);line-height:1.55}
+.b .btn.p{background:var(--cy);color:#101114;font-weight:600;border-radius:0}
+.b .btn.s{background:transparent;border-color:var(--ln);color:var(--dim);border-radius:0}
+
+/* ---------- C. панель инструмента ---------- */
+.c{--bg:#1A1A1C;--key:#232326;--ink:#EDEDEF;--dim:#9A9A9F;--ln:#2E2E33;--am:#FFB020;--rd:#FF4D3D;--gn:#7DD87D;
+   background:var(--bg);color:var(--ink);font-family:-apple-system,"Segoe UI",Inter,system-ui,sans-serif}
+.c .bar{border-bottom:1px solid var(--ln);color:var(--dim);font-size:9px;letter-spacing:.16em;text-transform:uppercase}
+.c .seg{margin-left:auto;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;color:var(--am);font-size:12px;letter-spacing:.05em}
+.c .keys{display:flex;gap:3px;padding:8px 14px;border-bottom:1px solid var(--ln)}
+.c .keys i{flex:1;height:7px;background:var(--key);border-radius:2px}
+.c .keys i.on{background:var(--am)}
+.c .q{font-size:19px;line-height:1.7}
+.c .bl{border-bottom:2px solid var(--am);color:var(--am);text-align:center}
+.c .hint{color:#75757A;font-size:13px}
+.c .vd{font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--gn)}
+.c .ans{font-size:15px;margin:7px 0 6px}
+.c .ans em{font-style:normal;color:var(--gn)}
+.c .nt{font-size:12px;color:var(--dim);line-height:1.55}
+.c .btn.p{background:var(--am);color:#1A1A1C;font-weight:600}
+.c .btn.s{background:var(--key);border-color:var(--ln);color:var(--dim)}
+
+/* ---------- D. табло ---------- */
+.d{--bg:#0B0C0E;--ink:#FFFFFF;--dim:#9AA0A8;--ln:#1E2126;--am:#FFC145;--gn:#34D399;--rd:#FB7185;
+   background:var(--bg);color:var(--ink);font-family:-apple-system,"Segoe UI",Inter,system-ui,sans-serif}
+.d .bar{border-bottom:1px solid var(--ln);color:var(--dim);font-size:10px;letter-spacing:.14em;text-transform:uppercase}
+.d .rows{border-bottom:1px solid var(--ln)}
+.d .row{display:flex;gap:12px;padding:5px 14px;font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:10px;color:var(--dim);border-bottom:1px solid var(--ln)}
+.d .row:last-child{border-bottom:0}
+.d .row.now{color:var(--am)}
+.d .row b{font-weight:400;width:64px}
+.d .q{font-size:19px;line-height:1.7}
+.d .bl{border-bottom:2px solid var(--am);color:var(--am);text-align:center}
+.d .hint{color:#6C727A;font-size:13px}
+.d .vd{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--gn)}
+.d .ans{font-size:15px;margin:7px 0 6px}
+.d .ans em{font-style:normal;color:var(--gn)}
+.d .nt{font-size:12px;color:var(--dim);line-height:1.55}
+.d .btn.p{background:var(--am);color:#0B0C0E;font-weight:600}
+.d .btn.s{background:transparent;border-color:var(--ln);color:var(--dim)}
+
+/* ---------- E. канон ---------- */
+.e{--bg:#09090B;--sf:#18181B;--ink:#FAFAFA;--dim:#A1A1AA;--ln:#27272A;--ac:#6366F1;--ok:#22C55E;--no:#EF4444;
+   background:var(--bg);color:var(--ink);font-family:Inter,-apple-system,"Segoe UI",system-ui,sans-serif}
+.e .bar{border-bottom:1px solid var(--ln);color:var(--dim);font-size:11px}
+.e .stage{padding:22px 20px}
+.e .q{font-size:18px;line-height:1.7}
+.e .bl{border:1px solid var(--ln);background:var(--sf);border-radius:8px;padding:2px 8px;color:var(--ink);text-align:center}
+.e .hint{color:#71717A;font-size:13px}
+.e .fb{background:var(--sf);border:1px solid var(--ln);border-radius:12px;padding:12px 14px}
+.e .vd{font-size:12px;font-weight:600;color:var(--ok)}
+.e .ans{font-size:14px;margin:6px 0 6px}
+.e .ans em{font-style:normal;font-weight:600;color:var(--ok)}
+.e .nt{font-size:12px;color:var(--dim);line-height:1.55}
+.e .btn.p{background:var(--ac);color:#fff;border-radius:8px;font-weight:500}
+.e .btn.s{background:var(--sf);border-color:var(--ln);color:var(--ink);border-radius:8px}
+
+/* демоты */
+.demoted{border:1px solid var(--edge);border-radius:12px;padding:var(--s5);background:var(--panel)}
+.demoted h3{margin:0 0 var(--s4);font-size:.6875rem;letter-spacing:.12em;text-transform:uppercase;color:var(--faint);font-weight:500}
+.demoted ul{list-style:none;margin:0;padding:0;display:grid;gap:var(--s4)}
+.demoted li{font-size:.875rem;color:var(--dim);border-left:2px solid var(--edge);padding-left:var(--s3)}
+.demoted b{color:var(--txt);font-weight:600}
+.v{font-size:.6875rem;letter-spacing:.1em;text-transform:uppercase;color:var(--faint)}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+<h1>Куда двигать облик тренажёра</h1>
+<p class="lede">Одна и та же сцена — вопрос, ответ и разбор — отрисована в пяти визуальных мирах. Механика, содержание и логика проверки везде одинаковые: меняется только язык формы и цвета.</p>
+<p class="meta">Направления получены процедурой скилла: сначала семь кандидатов из культурного мира аудитории (школьная таблица спряжений, словарная статья, табло вокзала, нотный стан, терминал, тетрадь, сегментное табло), затем внешняя жеребьёвка <code>concept-seed --scope direction --mode operate</code> назначила, какой из них строить, и сдала шесть чужих форм-челленджеров. Каждый челленджер был сращён с продуктом и оценён по двум осям: узнаёт ли себя аудитория и не мешает ли форма понимать грамматику.</p>
+
+<!-- ============ A ============ -->
+<section class="card">
+  <header>
+    <p class="kicker lead">Назначено жеребьёвкой</p>
+    <h2>Таблица спряжений</h2>
+    <p class="case">Швейцарская модульная сетка: гротеск, волосяные линейки вместо карточек, один синий на всё взаимодействие. Главное — таблица двенадцати времён перестаёт прятаться в настройках и становится подписью приложения: она всегда в шапке, и в ней горит та клетка, которую ты сейчас отрабатываешь. Ты всё время видишь, где находишься в системе времён.</p>
+  </header>
+  <div class="body">
+    <div class="mock">
+      <div class="scr a">
+        <div class="bar"><span>Тренажёр английской грамматики</span><span style="margin-left:auto">42 / 47 · 89%</span></div>
+        <div class="grid">
+          <span>Pres&nbsp;Simple</span><span class="on">Past&nbsp;Simple</span><span>Fut&nbsp;Simple</span>
+          <span>Pres&nbsp;Cont</span><span>Past&nbsp;Cont</span><span>Fut&nbsp;Cont</span>
+          <span>Pres&nbsp;Perf</span><span>Past&nbsp;Perf</span><span>Fut&nbsp;Perf</span>
+        </div>
+        <div class="stage">
+          <p class="q">She <span class="bl">didn't go</span> <span class="hint">(not / go)</span> to school yesterday.</p>
+          <div class="fb">
+            <div class="vd">Верно</div>
+            <p class="ans">She <em>didn't go</em> to school yesterday.</p>
+            <p class="nt">Отрицание в Past Simple: did not + начальная форма. Прошедшее уже в did, поэтому не «didn't went».</p>
+          </div>
+          <div class="btns"><span class="btn p">Дальше</span><span class="btn s">Не знаю</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="notes">
+      <div><h3>Палитра</h3>
+        <div class="sw"><i style="background:#0E0F11"></i><i style="background:#16181B"></i><i style="background:#23262B"></i><i style="background:#A1A6AD"></i><i style="background:#F2F3F5"></i><i style="background:#3B6BFF"></i><i style="background:#3ECF8E"></i><i style="background:#FF6B5E"></i></div>
+        <p style="margin-top:8px">Холодный нейтральный ноль, кобальт на действие, мята и коралл только на вердикт. Красный как акцент недоступен — он занят ошибкой.</p>
+      </div>
+      <div><h3>Подъёмы от проигравших</h3>
+        <p class="raise"><b>От пиксельного города:</b> один модуль на всё. Каждый элемент, включая ширину пропуска, садится на сетку 8px — страница читается как одна система, а не как «аккуратные отступы».</p>
+        <p class="raise"><b>От однобитного десктопа:</b> состояние выражается структурой, а не только цветом — инверсия, вес, линейка. Дальтоник видит верно/неверно без зелёного и красного.</p>
+        <p class="raise"><b>От дождевого сада:</b> одна доминирующая ось. Строка задания — единственная главная линия, всё остальное ей уступает.</p>
+      </div>
+      <div><h3>Честный риск</h3>
+        <p class="risk">Швейцарская строгость легко скатывается в «ещё один аккуратный дашборд». Держит направление только подпись — живая таблица времён; без неё это канон.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ B ============ -->
+<section class="card">
+  <header>
+    <p class="kicker">Челленджер · сравним по силе</p>
+    <h2>Модульные полосы</h2>
+    <p class="case">Голландская модульная идентика: мелкий деловой гротеск, поверх которого идут крупные цветные полосы. Цвет становится системой, а не украшением — своя полоса у глаголов, артиклей и местоимений, своя у вердикта. Интерфейс говорит тихо, цвет говорит громко.</p>
+  </header>
+  <div class="body">
+    <div class="mock">
+      <div class="scr b">
+        <div class="bars"><i style="background:#22D3EE"></i><i style="background:#F04DA1"></i><i style="background:#FDE047"></i><i style="background:#4ADE80"></i></div>
+        <div class="bar"><span>Глаголы</span><span style="margin-left:auto">42 / 47</span></div>
+        <div class="stage">
+          <p class="q">She <span class="bl">didn't go</span> <span class="hint">(not / go)</span> to school yesterday.</p>
+          <div class="fb">
+            <span class="vd">Верно</span>
+            <p class="ans">She <em>didn't go</em> to school yesterday.</p>
+            <span class="tagbar">Past Simple · отрицание</span>
+            <p class="nt" style="margin-top:8px">Отрицание в Past Simple: did not + начальная форма. Прошедшее уже в did.</p>
+          </div>
+          <div class="btns"><span class="btn p">Дальше</span><span class="btn s">Не знаю</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="notes">
+      <div><h3>Палитра</h3>
+        <div class="sw"><i style="background:#101114"></i><i style="background:#26282E"></i><i style="background:#22D3EE"></i><i style="background:#F04DA1"></i><i style="background:#FDE047"></i><i style="background:#4ADE80"></i><i style="background:#F5F5F7"></i></div>
+        <p style="margin-top:8px">Четыре насыщенных цвета как код, не как декор. Самая «сегодняшняя» графика из всех вариантов.</p>
+      </div>
+      <div><h3>Вердикт</h3>
+        <p>Держит ось <b>узнавания аудиторией</b>: взрослый читает это как современный графический дизайн, ребёнок — как игру цветом, и при этом ничего мультяшного. По <b>ясности</b> идёт вровень с назначенным: цветовое кодирование темы полезно, но четыре кислотных цвета за сорок минут утомляют сильнее одного кобальта.</p>
+      </div>
+      <div><h3>Честный риск</h3>
+        <p class="risk">Жёлтый и циан на тёмном — самые крикливые пары в палитре. Если садиться надолго, глаза устанут раньше, чем при варианте А.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ C ============ -->
+<section class="card">
+  <header>
+    <p class="kicker">Челленджер · сравним по силе</p>
+    <h2>Панель инструмента</h2>
+    <p class="case">Угольная панель драм-машины: подписи набраны мелкой шелкографией, светится только то, что живо. Ряд клавиш наверху — это сессия: отвеченные шаги горят, текущий пульсирует. Серия правильных ответов — не медаль, а бегущий огонёк.</p>
+  </header>
+  <div class="body">
+    <div class="mock">
+      <div class="scr c">
+        <div class="bar"><span>English drill</span><span class="seg">42:47 · 89%</span></div>
+        <div class="keys"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></div>
+        <div class="stage">
+          <p class="q">She <span class="bl">didn't go</span> <span class="hint">(not / go)</span> to school yesterday.</p>
+          <div class="fb">
+            <div class="vd">Верно · Past Simple</div>
+            <p class="ans">She <em>didn't go</em> to school yesterday.</p>
+            <p class="nt">Отрицание в Past Simple: did not + начальная форма. Прошедшее уже в did.</p>
+          </div>
+          <div class="btns"><span class="btn p">Дальше</span><span class="btn s">Не знаю</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="notes">
+      <div><h3>Палитра</h3>
+        <div class="sw"><i style="background:#1A1A1C"></i><i style="background:#232326"></i><i style="background:#2E2E33"></i><i style="background:#9A9A9F"></i><i style="background:#FFB020"></i><i style="background:#7DD87D"></i><i style="background:#FF4D3D"></i></div>
+        <p style="margin-top:8px">Панель молчит, светится только состояние. Один янтарь несёт и акцент, и «сейчас».</p>
+      </div>
+      <div><h3>Вердикт</h3>
+        <p>Держит ось <b>узнавания</b>: приборная панель — классический ответ на «серьёзно, но заходить хочется», и работает на обоих возрастах. По <b>ясности</b> уступает: шестнадцати шагов в тренажёре нет, поток заданий бесконечен, и ряд клавиш придётся притягивать за уши.</p>
+      </div>
+      <div><h3>Честный риск</h3>
+        <p class="risk">Метафора инструмента может остаться костюмом: если ряд клавиш ничего не значит, он превращается в украшение — ровно то, что скилл запрещает.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ D ============ -->
+<section class="card">
+  <header>
+    <p class="kicker pick">Мой собственный фаворит</p>
+    <h2>Табло вокзала</h2>
+    <p class="case">Тёмное табло отправлений: ряды, жёсткая колоночная сетка, янтарь на строке «сейчас». Резонанс прямой — на табло главная ось это <b>время</b>, и в тренажёре тоже. Двенадцать времён становятся расписанием, текущее задание — строкой, которая горит.</p>
+  </header>
+  <div class="body">
+    <div class="mock">
+      <div class="scr d">
+        <div class="bar"><span>Departures</span><span style="margin-left:auto">42 / 47 · 89%</span></div>
+        <div class="rows">
+          <div class="row"><b>PRES SIM</b><span>every day</span><span style="margin-left:auto">126</span></div>
+          <div class="row now"><b>PAST SIM</b><span>yesterday</span><span style="margin-left:auto">now</span></div>
+          <div class="row"><b>PRES PRF</b><span>this week</span><span style="margin-left:auto">84</span></div>
+        </div>
+        <div class="stage">
+          <p class="q">She <span class="bl">didn't go</span> <span class="hint">(not / go)</span> to school yesterday.</p>
+          <div class="fb">
+            <div class="vd">✓ correct</div>
+            <p class="ans">She <em>didn't go</em> to school yesterday.</p>
+            <p class="nt">Отрицание в Past Simple: did not + начальная форма. Прошедшее уже в did.</p>
+          </div>
+          <div class="btns"><span class="btn p">Дальше</span><span class="btn s">Не знаю</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="notes">
+      <div><h3>Палитра</h3>
+        <div class="sw"><i style="background:#0B0C0E"></i><i style="background:#1E2126"></i><i style="background:#9AA0A8"></i><i style="background:#FFC145"></i><i style="background:#FFFFFF"></i><i style="background:#34D399"></i><i style="background:#FB7185"></i></div>
+        <p style="margin-top:8px">Почти чёрное табло, янтарь как «здесь и сейчас», белый как данные.</p>
+      </div>
+      <div><h3>Почему он мой</h3>
+        <p>Сильнее всех по обеим осям сразу: и ребёнок, и взрослый знают табло наизусть, а «время» — буквально предмет тренажёра. Ряды дают бесплатную структуру и для настроек, и для работы над ошибками.</p>
+      </div>
+      <div><h3>Честный риск</h3>
+        <p class="risk">Это самая заезженная территория: тёмный фон плюс моноширинный янтарь — то, куда сваливается почти любой «современный» технический интерфейс. И янтарь на чёрном легко читается как ретро, а не как современно — ровно против твоей цели.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ E ============ -->
+<section class="card">
+  <header>
+    <p class="kicker">Стандартный выход</p>
+    <h2>Канон: современный продуктовый интерфейс</h2>
+    <p class="case">Категорийный стандарт, сыгранный без иронии и без попыток его переиграть: нейтральная серая шкала, один индиговый акцент, скруглённые поверхности, Inter. Так выглядят Linear, Notion и половина сегодняшних инструментов. Это самый прямой способ выполнить «современно, не как школьный сайт».</p>
+  </header>
+  <div class="body">
+    <div class="mock">
+      <div class="scr e">
+        <div class="bar"><span>Тренажёр</span><span style="margin-left:auto">42 / 47 · 89%</span></div>
+        <div class="stage">
+          <p class="q">She <span class="bl">didn't go</span> <span class="hint">(not / go)</span> to school yesterday.</p>
+          <div class="fb">
+            <div class="vd">Верно</div>
+            <p class="ans">She <em>didn't go</em> to school yesterday.</p>
+            <p class="nt">Отрицание в Past Simple: did not + начальная форма. Прошедшее уже в did.</p>
+          </div>
+          <div class="btns"><span class="btn p">Дальше</span><span class="btn s">Не знаю</span></div>
+        </div>
+      </div>
+    </div>
+    <div class="notes">
+      <div><h3>Палитра</h3>
+        <div class="sw"><i style="background:#09090B"></i><i style="background:#18181B"></i><i style="background:#27272A"></i><i style="background:#A1A1AA"></i><i style="background:#FAFAFA"></i><i style="background:#6366F1"></i><i style="background:#22C55E"></i><i style="background:#EF4444"></i></div>
+        <p style="margin-top:8px">Zinc-шкала и индиго — палитра, которую сегодня носит почти весь софт.</p>
+      </div>
+      <div><h3>Что получаешь</h3>
+        <p>Предсказуемо аккуратный результат без риска. Узнаваемо, современно, никаких вопросов у любого возраста.</p>
+      </div>
+      <div><h3>Честный риск</h3>
+        <p class="risk">Ничем не отличается от тысячи других экранов. Через месяц не вспомнишь, как он выглядел.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<div class="demoted">
+  <h3>Отклонённые челленджеры и что от них взято</h3>
+  <ul>
+    <li><span class="v">Отклонён</span> · <b>Пиксельный мегаполис eBoy</b> — изометрический город из чистых RGB. Проигрывает по обеим осям: набирать ответ внутри пиксельного города невозможно, взрослый в этом себя не узнаёт. <b>Взято:</b> бескомпромиссность единого модуля.</li>
+    <li><span class="v">Отклонён</span> · <b>Однобитный десктоп</b> — чёрно-белый дизеринг, окна, «марширующие муравьи». Ясность неплохая, но это ретро, а не современность, и контраст на дизеринге не вытянуть. <b>Взято:</b> состояние выражается структурой, а не цветом.</li>
+    <li><span class="v">Отклонён</span> · <b>Развёртываемый лист Миура</b> — золотая фольга, аэрокосмический моношрифт, сетка складок. Складка не соответствует ни одному факту продукта, получается костюм. <b>Взято:</b> одно действие видимо перестраивает всё поле.</li>
+    <li><span class="v">Отклонён</span> · <b>Сад гравитационного дождя</b> — базовые линии текста гнутся по локальной гравитации. Прямой конфликт с чтением задания, а ясность в конфликтах выигрывает. <b>Взято:</b> одна доминирующая ось на странице.</li>
+  </ul>
+</div>
+
+</div>
+</body>
+</html>

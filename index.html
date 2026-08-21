@@ -1,0 +1,1356 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%232B4BA8'/%3E%3Ctext x='16' y='23' font-family='Georgia,serif' font-size='20' fill='%23fff' text-anchor='middle'%3EEn%3C/text%3E%3C/svg%3E">
+<title>Тренажёр английской грамматики</title>
+<script>
+/* тема до первой отрисовки, чтобы не моргало светлым */
+(function(){ var t='dark';
+  try{ var s=JSON.parse(localStorage.getItem('en2-trainer-v1')||'null'); if(s&&s.theme) t=s.theme; }catch(e){}
+  if(t!=='auto') document.documentElement.setAttribute('data-theme',t);
+})();
+</script>
+<style>
+/* ==================================================================
+   ТОКЕНЫ. Мир: модульная идентика — тихий деловой гротеск,
+   поверх которого работают крупные цветные полосы. Цвет кодирует
+   смысл (тема задания, вердикт) и никогда не украшает.
+   ================================================================== */
+:root{
+  /* --- светлая тема: холодный серый как земля, не белизна --- */
+  --bg:#F1F3F5; --surface:#FFFFFF; --surface-2:#E5E8EC;
+  --ink:#0F1216; --muted:#555D68; --faint:#666D7A;
+  --line:#D5DAE0; --line-strong:#B4BCC6;
+
+  /* цветовой код: как блок — яркий вариант с тёмным текстом,
+     как текст — затемнённый вариант                                */
+  --verb:#00B8D9;      --verb-ink:#046C80;
+  --article:#FFD400;   --article-ink:#7A6100;
+  --pronoun:#F0439B;   --pronoun-ink:#A3106A;
+  --ok:#2FC26B;        --ok-ink:#15703C;
+  --bad:#FF4438;       --bad-ink:#B01B10;
+  --on-color:#0F1216;                 /* текст поверх цветного блока */
+
+  --action:#0F1216; --action-ink:#FFFFFF;   /* главная кнопка — плашка чернил */
+  color-scheme:light;
+
+  /* --- шкала отступов, шаг 4px --- */
+  --s1:4px; --s2:8px; --s3:12px; --s4:16px; --s5:24px;
+  --s6:32px; --s7:48px; --s8:64px; --s9:96px;
+
+  /* --- типографика: одна гарнитура, фиксированная rem-шкала --- */
+  --t1:.6875rem; --t2:.75rem; --t3:.8125rem; --t4:.875rem;
+  --t5:1rem; --t6:1.125rem; --t7:1.375rem; --t8:1.75rem;
+  --lh-tight:1.25; --lh-body:1.55; --lh-read:1.6;
+  --sans:"Helvetica Neue",Inter,-apple-system,BlinkMacSystemFont,"Segoe UI",system-ui,Arial,sans-serif;
+
+  /* --- форма: мир из жёстких блоков, скруглений нет --- */
+  --r:0px;
+  --band:10px;         /* высота полосы темы */
+  --band-2:6px;        /* высота полосы вердикта */
+
+  /* --- движение: блоки встают на место, а не выплывают --- */
+  --dur1:120ms; --dur2:180ms; --dur3:240ms;
+  --ease:cubic-bezier(.2,.8,.2,1);
+
+  /* --- раскладка --- */
+  --measure:720px;
+  --item-reserve:90px;   /* замер: блок задания бывает 45 / 75 / 90px */
+  --gutter:max(var(--s5), env(safe-area-inset-left));
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --bg:#0E1013; --surface:#15181D; --surface-2:#1D2128;
+  --ink:#F0F2F5; --muted:#A3ABB6; --faint:#79828F;
+  --line:#252A32; --line-strong:#39404A;
+  --verb:#22D3EE;      --verb-ink:#22D3EE;
+  --article:#FDE047;   --article-ink:#FDE047;
+  --pronoun:#F865AE;   --pronoun-ink:#F865AE;
+  --ok:#4ADE80;        --ok-ink:#4ADE80;
+  --bad:#FF7043;       --bad-ink:#FF7043;
+  --on-color:#0E1013;
+  --action:#F0F2F5; --action-ink:#0E1013;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --bg:#0E1013; --surface:#15181D; --surface-2:#1D2128;
+    --ink:#F0F2F5; --muted:#A3ABB6; --faint:#79828F;
+    --line:#252A32; --line-strong:#39404A;
+    --verb:#22D3EE;      --verb-ink:#22D3EE;
+    --article:#FDE047;   --article-ink:#FDE047;
+    --pronoun:#F865AE;   --pronoun-ink:#F865AE;
+    --ok:#4ADE80;        --ok-ink:#4ADE80;
+    --bad:#FF7043;       --bad-ink:#FF7043;
+    --on-color:#0E1013;
+    --action:#F0F2F5; --action-ink:#0E1013;
+  }
+}
+/* цвет текущей темы задания — им красится пропуск, фокус и каретка */
+body{--topic:var(--verb); --topic-ink:var(--verb-ink)}
+body[data-topic="article"]{--topic:var(--article); --topic-ink:var(--article-ink)}
+body[data-topic="pronoun"]{--topic:var(--pronoun); --topic-ink:var(--pronoun-ink)}
+
+/* ============================== база ============================== */
+*,*::before,*::after{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{
+  margin:0; background:var(--bg); color:var(--ink);
+  font-family:var(--sans); font-size:var(--t5); line-height:var(--lh-body);
+  -webkit-font-smoothing:antialiased; letter-spacing:-.006em;
+  min-height:100dvh; display:flex; flex-direction:column;
+}
+[hidden]{display:none!important}
+::selection{background:var(--topic); color:var(--on-color)}
+:focus-visible{outline:2px solid var(--topic); outline-offset:2px; border-radius:0}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-thumb{background:var(--line-strong); border:3px solid var(--bg)}
+::-webkit-scrollbar-track{background:transparent}
+button, input{
+  font:inherit; color:inherit; appearance:none; -webkit-appearance:none;
+  background-color:transparent; border-radius:0;
+}
+svg{display:block}
+
+/* ============================== шапка ============================== */
+.bar{
+  display:flex; align-items:center; gap:var(--s4);
+  padding:var(--s3) var(--gutter);
+  background:var(--surface); border-bottom:1px solid var(--line);
+  position:sticky; top:0; z-index:20;
+}
+.brand{display:flex; align-items:center; gap:var(--s2); white-space:nowrap}
+.mark{display:flex; gap:2px}
+.mark i{width:6px; height:16px; display:block}
+.mark i:nth-child(1){background:var(--verb)}
+.mark i:nth-child(2){background:var(--article)}
+.mark i:nth-child(3){background:var(--pronoun)}
+.brand span{
+  font-size:var(--t2); font-weight:600; letter-spacing:.08em; text-transform:uppercase;
+}
+.spacer{flex:1}
+.stats{
+  display:flex; align-items:baseline; gap:var(--s4);
+  font-size:var(--t2); color:var(--muted); font-variant-numeric:tabular-nums;
+  letter-spacing:.04em; text-transform:uppercase;
+}
+.stats b{color:var(--ink); font-weight:600}
+.stats .sep{width:1px; height:12px; background:var(--line); align-self:center}
+.streak{display:inline-flex; align-items:center; gap:var(--s1)}
+.streak.hot{color:var(--ok-ink)}
+.iconbtn{
+  display:grid; place-items:center; width:32px; height:32px; padding:0;
+  background:transparent; border:1px solid transparent; color:var(--muted); cursor:pointer;
+  transition:background var(--dur1) var(--ease), color var(--dur1) var(--ease);
+}
+.iconbtn:hover{background:var(--surface-2); color:var(--ink)}
+.iconbtn[aria-expanded="true"]{background:var(--ink); color:var(--bg)}
+
+/* ============ полосы: подпись системы ============ */
+.bands{display:block; background:var(--surface); border-bottom:1px solid var(--line)}
+.bands.reset, .bands.reset *{transition:none!important}
+.bands .brow{display:flex; height:var(--band)}
+.bands .brow i{flex:1; transition:flex-grow var(--dur1) var(--ease), opacity var(--dur1) var(--ease); opacity:.32}
+.bands .brow i[data-topic="verb"]{background:var(--verb)}
+.bands .brow i[data-topic="article"]{background:var(--article)}
+.bands .brow i[data-topic="pronoun"]{background:var(--pronoun)}
+body[data-topic="verb"]    .bands i[data-topic="verb"],
+body[data-topic="article"] .bands i[data-topic="article"],
+body[data-topic="pronoun"] .bands i[data-topic="pronoun"]{flex-grow:6; opacity:1}
+.bands .vrow{height:var(--band-2); background:var(--surface-2); overflow:hidden}
+.bands .vrow i{
+  display:block; height:100%; background:var(--line-strong);
+  transform:scaleX(0); transform-origin:left;
+  transition:transform var(--dur2) var(--ease), background var(--dur1) var(--ease);
+}
+body[data-verdict="ok"]  .bands .vrow i{transform:scaleX(1); background:var(--ok)}
+body[data-verdict="bad"] .bands .vrow i{transform:scaleX(1); background:var(--bad)}
+
+/* ============================== настройки ============================== */
+.panel{
+  background:var(--surface); border-bottom:1px solid var(--line);
+  padding:var(--s5) var(--gutter) var(--s6);
+  animation:drop var(--dur2) var(--ease);
+}
+@keyframes drop{from{opacity:0; transform:translateY(-6px)}}
+.panel-in{max-width:var(--measure); margin:0 auto; display:grid; gap:var(--s5)}
+.row{display:flex; flex-wrap:wrap; align-items:flex-start; gap:var(--s2)}
+.row-label{
+  font-size:var(--t1); letter-spacing:.12em; text-transform:uppercase;
+  color:var(--faint); width:104px; flex:none; padding-top:var(--s2);
+}
+.chip{
+  padding:var(--s2) var(--s3); border:1px solid var(--line-strong); background:transparent;
+  color:var(--muted); font-size:var(--t2); letter-spacing:.03em; cursor:pointer; text-align:center;
+  transition:background var(--dur1) var(--ease), color var(--dur1) var(--ease), border-color var(--dur1) var(--ease);
+}
+.chip:hover{border-color:var(--ink); color:var(--ink)}
+.chip[aria-pressed="true"]{background:var(--ink); border-color:var(--ink); color:var(--bg); font-weight:600}
+/* тематические чипы носят свой цвет кода */
+.row[data-group="topics"] .chip[data-key="verb"][aria-pressed="true"]{background:var(--verb); border-color:var(--verb); color:var(--on-color)}
+.row[data-group="topics"] .chip[data-key="article"][aria-pressed="true"]{background:var(--article); border-color:var(--article); color:var(--on-color)}
+.row[data-group="topics"] .chip[data-key="pronoun"][aria-pressed="true"]{background:var(--pronoun); border-color:var(--pronoun); color:var(--on-color)}
+.chip.locked{animation:nudge var(--dur3) var(--ease)}
+@keyframes nudge{25%{transform:translateX(-3px)}75%{transform:translateX(3px)}}
+.tenses{display:grid; grid-template-columns:repeat(3, minmax(0,1fr)); gap:1px; flex:1; min-width:0; background:var(--line)}
+.tenses .chip{border:0; padding:var(--s2); font-size:var(--t1); letter-spacing:.05em; color:var(--faint)}
+/* двенадцать клеток — тихая заливка: иерархия темы > формы > времена */
+.tenses .chip[aria-pressed="true"]{background:var(--line-strong); color:var(--ink); font-weight:600}
+.panel .link{
+  background:none; border:none; padding:var(--s2) 0; color:var(--muted); font-size:var(--t2);
+  letter-spacing:.03em; text-decoration:underline; text-underline-offset:3px;
+  text-decoration-color:var(--line-strong); cursor:pointer;
+}
+.panel .link:hover{color:var(--bad-ink); text-decoration-color:currentColor}
+
+/* ============================== задание ============================== */
+main{
+  flex:1; display:flex; flex-direction:column; align-items:center; justify-content:flex-start;
+  padding:clamp(var(--s7), 11vh, var(--s9)) var(--gutter) var(--s7);
+}
+.stage{width:100%; max-width:var(--measure)}
+.item{display:grid; gap:var(--s3); align-content:start;
+      min-height:var(--item-reserve); margin-bottom:var(--s6)}
+/* единственный авторский момент — появление разбора; сдвига нет, только проявление */
+@keyframes enter{from{opacity:0}}
+.sentence{
+  margin:0; font-size:var(--t8); line-height:var(--lh-read);
+  letter-spacing:-.022em; font-weight:500;
+}
+.hint{color:var(--faint); font-size:.62em; letter-spacing:.02em; font-weight:400; white-space:nowrap}
+.subhint{margin:0; font-size:var(--t2); color:var(--faint); letter-spacing:.03em}
+.blank{
+  font:inherit; font-weight:600; color:var(--topic-ink);
+  background:transparent; border:0; border-bottom:3px solid var(--topic);
+  padding:0 .14em 2px; margin:0 .08em; text-align:center;
+  caret-color:var(--topic); min-width:3ch; line-height:1.2; vertical-align:baseline;
+  transition:background var(--dur1) var(--ease), color var(--dur1) var(--ease), border-color var(--dur1) var(--ease);
+}
+.blank:hover:not(:disabled){background:var(--surface-2)}
+.blank:focus{outline:none; background:var(--surface-2)}
+.blank:disabled{opacity:1; -webkit-text-fill-color:currentColor}
+/* вердикт: верный ответ заливается блоком, ошибка остаётся тихой —
+   награда громче наказания */
+.blank.ok{background:var(--ok); border-bottom-color:var(--ok); color:var(--on-color); -webkit-text-fill-color:var(--on-color)}
+.blank.bad{background:transparent; border-bottom-color:var(--bad); color:var(--bad-ink); -webkit-text-fill-color:var(--bad-ink); text-decoration:line-through; text-decoration-thickness:2px}
+.blank.empty{animation:nudge var(--dur3) var(--ease); border-bottom-color:var(--bad)}
+
+/* ============================== разбор ============================== */
+.fb:not(:empty){margin-top:var(--s6)}
+.verdict{display:grid; gap:var(--s3); justify-items:start; animation:enter var(--dur1) var(--ease) both}
+.mark-v{
+  display:inline-block; padding:var(--s1) var(--s3); font-size:var(--t1); font-weight:700;
+  letter-spacing:.12em; text-transform:uppercase; color:var(--on-color);
+}
+.mark-v.ok{background:var(--ok)}
+.mark-v.bad{background:var(--bad)}
+.answer{margin:0; font-size:var(--t6); line-height:var(--lh-body); color:var(--ink); font-weight:400}
+.answer .fill{font-weight:700; color:var(--ok-ink); box-shadow:inset 0 -.42em 0 -.06em color-mix(in srgb, var(--ok) 28%, transparent)}
+.tag{
+  display:inline-block; padding:var(--s1) var(--s3); background:var(--article); color:var(--on-color);
+  font-size:var(--t1); font-weight:700; letter-spacing:.1em; text-transform:uppercase;
+}
+.note{margin:0; font-size:var(--t4); line-height:var(--lh-body); color:var(--muted); max-width:62ch}
+.note b{color:var(--ink); font-weight:700}
+
+/* ============================== действия ============================== */
+.actions{display:flex; align-items:center; gap:var(--s2)}
+.btn{
+  appearance:none; -webkit-appearance:none; display:inline-flex; align-items:center; gap:var(--s2);
+  padding:var(--s3) var(--s5); border:1px solid var(--action); background:var(--action);
+  color:var(--action-ink); font-size:var(--t3); font-weight:600; letter-spacing:.04em;
+  text-transform:uppercase; cursor:pointer;
+  transition:filter var(--dur1) var(--ease), transform 60ms var(--ease);
+}
+.btn:hover{filter:brightness(.88)}
+.btn:active{transform:translateY(1px)}
+.btn.ghost{background:transparent; color:var(--ink); border-color:var(--line-strong); font-weight:500}
+.btn.ghost:hover{border-color:var(--ink); filter:none}
+.keys{margin:var(--s5) 0 0; font-size:var(--t2); color:var(--faint); letter-spacing:.02em}
+.keys kbd{
+  font:inherit; font-size:var(--t1); font-weight:600; background:var(--surface-2);
+  border:1px solid var(--line); padding:2px 6px; color:var(--muted);
+}
+
+/* ============================== работа над ошибками ============================== */
+.log{background:var(--surface); border-top:1px solid var(--line)}
+.log-in{max-width:calc(var(--measure) + 2 * var(--gutter)); margin:0 auto; padding:0 var(--gutter) var(--s3)}
+.log summary{
+  list-style:none; cursor:pointer; padding:var(--s4) 0; font-size:var(--t2); color:var(--muted);
+  letter-spacing:.06em; text-transform:uppercase; display:flex; align-items:center; gap:var(--s2);
+}
+.log summary::-webkit-details-marker{display:none}
+.log summary svg{transition:transform var(--dur2) var(--ease)}
+.log details[open] summary svg{transform:rotate(90deg)}
+.log summary b{color:var(--ink); font-weight:700}
+.log ul{list-style:none; margin:0; padding:0 0 var(--s5); display:grid; gap:var(--s5)}
+.log li{display:grid; gap:var(--s2)}
+.log li::before{content:''; display:block; width:20px; height:4px; background:var(--line-strong)}
+.log li[data-topic="verb"]::before{background:var(--verb)}
+.log li[data-topic="article"]::before{background:var(--article)}
+.log li[data-topic="pronoun"]::before{background:var(--pronoun)}
+.log .s{font-size:var(--t5); line-height:var(--lh-body)}
+.log .s .fill{font-weight:700; color:var(--ok-ink)}
+.log .yours{font-size:var(--t2); color:var(--muted)}
+.log .yours s{color:var(--bad-ink); text-decoration-thickness:2px}
+
+/* ============================== адаптация ============================== */
+@media (max-width:900px){ .brand span{display:none} }
+@media (max-width:720px){
+  :root{ --gutter:max(var(--s4), env(safe-area-inset-left)); --band:8px; --band-2:5px; --item-reserve:154px }   /* самое длинное предложение на узком экране */
+  .sentence{font-size:var(--t7); line-height:1.75}
+  main{padding-top:var(--s6); padding-bottom:var(--s6)}
+  .stats{font-size:var(--t1); gap:var(--s3)}
+  .row-label{width:100%; padding-top:0}
+  .tenses{grid-template-columns:repeat(2, minmax(0,1fr))}
+  .answer{font-size:var(--t5)}
+  .keys{display:none}
+}
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{animation-duration:.001ms!important; transition-duration:.001ms!important}
+}
+</style>
+</head>
+<body>
+
+<header class="bar">
+  <span class="brand">
+    <span class="mark" aria-hidden="true"><i></i><i></i><i></i></span>
+    <span>Тренажёр английской грамматики</span>
+  </span>
+  <span class="spacer"></span>
+  <div class="stats" aria-live="off">
+    <span><b id="stCorrect">0</b> из <b id="stTotal">0</b></span>
+    <span class="sep"></span>
+    <span id="stAcc">—</span>
+    <span class="sep"></span>
+    <span class="streak" id="stStreakWrap">
+      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 3c.5 3-1.5 4.5-3 6s-3 3-3 5.5A5 5 0 0 0 12 20a5 5 0 0 0 5-5.5c0-2-1-3.5-2-4.5.2 1.6-.6 2.5-1.5 2.8.4-2.6-.2-7.3-.5-9.8z"/></svg>
+      <b id="stStreak">0</b>
+    </span>
+  </div>
+  <button class="iconbtn" id="themeBtn" title="Тема оформления" aria-label="Тема оформления"></button>
+  <button class="iconbtn" id="setBtn" aria-expanded="false" aria-controls="panel" title="Настройки" aria-label="Настройки">
+    <svg width="19" height="19" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.6a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+  </button>
+</header>
+
+<div class="bands" aria-hidden="true">
+  <div class="brow"><i data-topic="verb"></i><i data-topic="article"></i><i data-topic="pronoun"></i></div>
+  <div class="vrow"><i></i></div>
+</div>
+
+<section class="panel" id="panel" hidden>
+  <div class="panel-in">
+    <div class="row" data-group="topics">
+      <span class="row-label">Темы</span>
+      <button class="chip" data-key="verb">Глаголы</button>
+      <button class="chip" data-key="article">Артикли</button>
+      <button class="chip" data-key="pronoun">Местоимения</button>
+    </div>
+    <div class="row" data-group="tenses">
+      <span class="row-label">Времена</span>
+      <div class="tenses">
+        <button class="chip" data-key="pres">Present Simple</button>
+        <button class="chip" data-key="past">Past Simple</button>
+        <button class="chip" data-key="fut">Future Simple</button>
+        <button class="chip" data-key="presC">Present Continuous</button>
+        <button class="chip" data-key="pastC">Past Continuous</button>
+        <button class="chip" data-key="futC">Future Continuous</button>
+        <button class="chip" data-key="presP">Present Perfect</button>
+        <button class="chip" data-key="pastP">Past Perfect</button>
+        <button class="chip" data-key="futP">Future Perfect</button>
+        <button class="chip" data-key="presPC">Present Perfect Cont.</button>
+        <button class="chip" data-key="pastPC">Past Perfect Cont.</button>
+        <button class="chip" data-key="futPC">Future Perfect Cont.</button>
+      </div>
+    </div>
+    <div class="row" data-group="forms">
+      <span class="row-label">Формы</span>
+      <button class="chip" data-key="aff">Утверждение</button>
+      <button class="chip" data-key="neg">Отрицание</button>
+      <button class="chip" data-key="q">Вопрос</button>
+    </div>
+    <div class="row">
+      <span class="row-label">Сброс</span>
+      <button class="link" id="resetBtn">Обнулить статистику и ошибки</button>
+    </div>
+  </div>
+</section>
+
+<main>
+  <div class="stage">
+    <div id="item" class="item"><p class="sentence" id="sentence"></p><p class="subhint" id="subhint" hidden></p></div>
+    <div class="actions">
+      <button class="btn" id="primary">Проверить</button>
+      <button class="btn ghost" id="reveal">Не знаю</button>
+    </div>
+    <div class="fb" id="fb" aria-live="polite"></div>
+    <p class="keys"><kbd>Enter</kbd> проверить, затем дальше &nbsp;·&nbsp; <kbd>Tab</kbd> следующий пропуск &nbsp;·&nbsp; <kbd>Ctrl</kbd>+<kbd>Enter</kbd> показать ответ</p>
+  </div>
+</main>
+
+<section class="log" id="log" hidden>
+  <div class="log-in">
+    <details>
+      <summary>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 6l6 6-6 6"/></svg>
+        Работа над ошибками: <b id="logCount">0</b>
+      </summary>
+      <ul id="logList"></ul>
+    </details>
+  </div>
+</section>
+
+<script>
+"use strict";
+/* ==================================================================
+   1. Грамматический движок
+   ================================================================== */
+const rnd  = n => Math.floor(Math.random()*n);
+const pick = a => a[rnd(a.length)];
+const cap  = s => s.charAt(0).toUpperCase()+s.slice(1);
+
+/* --- орфография окончаний --- */
+function thirdPerson(v){
+  if(/(ss|sh|ch|x|z|s)$/.test(v)) return v+'es';
+  if(/[^aeiou]y$/.test(v))        return v.slice(0,-1)+'ies';
+  if(/o$/.test(v))                return v+'es';
+  return v+'s';
+}
+function pastRegular(v,dbl){
+  if(/e$/.test(v))                return v+'d';
+  if(/[^aeiou]y$/.test(v))        return v.slice(0,-1)+'ied';
+  if(dbl)                         return v+v.slice(-1)+'ed';
+  return v+'ed';
+}
+function ruleThird(v){
+  if(/(ss|sh|ch|x|z|s)$/.test(v)) return 'после шипящих и -s/-x добавляем <b>-es</b>';
+  if(/[^aeiou]y$/.test(v))        return 'согласная + y → <b>-ies</b>';
+  if(/o$/.test(v))                return 'после -o добавляем <b>-es</b>';
+  return '';
+}
+function rulePast(v,dbl){
+  if(/e$/.test(v))                return 'глагол на -e → добавляем только <b>-d</b>';
+  if(/[^aeiou]y$/.test(v))        return 'согласная + y → <b>-ied</b>';
+  if(dbl)                         return 'краткая гласная → последняя согласная <b>удваивается</b>';
+  return '';
+}
+
+/* --- подлежащие: a = i | 3 | pl --- */
+const SUBJ = [
+  {t:'I',l:'I',a:'i'},               {t:'You',l:'you',a:'pl'},
+  {t:'He',l:'he',a:'3'},             {t:'She',l:'she',a:'3'},
+  {t:'We',l:'we',a:'pl'},            {t:'They',l:'they',a:'pl'},
+  {t:'Tom',l:'Tom',a:'3'},           {t:'Anna',l:'Anna',a:'3'},
+  {t:'Mr Brown',l:'Mr Brown',a:'3'}, {t:'Kate and Tom',l:'Kate and Tom',a:'pl'},
+  {t:'My brother',l:'your brother',a:'3'},   {t:'My sister',l:'your sister',a:'3'},
+  {t:'My mother',l:'your mother',a:'3'},     {t:'My friend',l:'your friend',a:'3'},
+  {t:'My parents',l:'your parents',a:'pl'},  {t:'My friends',l:'your friends',a:'pl'},
+  {t:'The children',l:'the children',a:'pl'},{t:'The teacher',l:'the teacher',a:'3'},
+  {t:'The students',l:'the students',a:'pl'}
+];
+
+/* --- маркеры времени: подсказывают время, других подсказок нет --- */
+const MARK = {
+  pres  :['every day','every morning','every week','on Mondays','on Sundays','twice a week','every weekend','every evening'],
+  past  :['yesterday','last week','last summer','two days ago','last night','a week ago','last Monday','in 2019','last year'],
+  fut   :['tomorrow','next week','next year','in two days','next summer','next Monday','tomorrow morning','next month'],
+  presC :['now','at the moment','right now','today'],
+  pastC :["at five o'clock yesterday",'all day yesterday','at that moment','all morning yesterday','when I came in'],
+  futC  :["at five o'clock tomorrow",'this time tomorrow','all day tomorrow','at that moment tomorrow'],
+  presP :['this week','this month','this year','today','recently','twice this week','before','many times'],
+  pastP :["by five o'clock yesterday",'by that time','by the end of the week','before the guests came','by Monday'],
+  futP  :["by five o'clock tomorrow",'by next Monday','by the end of the year','by that time'],
+  presPC:['for two hours','since morning','all day','since Monday','for a long time'],
+  pastPC:['for two hours before that','since morning','all day yesterday','for a long time'],
+  futPC :['for two hours by then','for ten years by next year','for a long time by that time']
+};
+/* глаголы состояния: с ними «every day» и «twice this week» звучат неестественно */
+const MARK_ST = {
+  pres :['now','today','at the moment'],
+  presP:['for two years','since Monday','for a long time','since last year']
+};
+/* be */
+const MARK_BE = {
+  pres :['now','today','at the moment','every Monday','every day'],
+  past :['yesterday','last week','two days ago','last night','a week ago'],
+  fut  :['tomorrow','next week','in an hour','next Monday','tonight'],
+  presP:['since morning','all day','for two hours','since Monday'],
+  pastP:['by that time','before the trip',"by five o'clock yesterday"],
+  futP :['by next week','by that time','by tomorrow evening']
+};
+
+/* --- глагол be --- */
+const BE = {
+  c:['at home','at school','at work','in the garden','very tired','happy','late','busy','ill',
+     'hungry','angry','in London','at the party','very glad','in the park','free','ready','afraid']
+};
+function beForm(agr,tense){
+  return agr==='i' ? 'am' : agr==='3' ? 'is' : 'are';
+}
+function bePast(agr){ return (agr==='3'||agr==='i') ? 'was' : 'were'; }
+
+/* --- глаголы: b=база, p=вторая форма, pp=третья, th=неправ. 3 л.,
+       dbl=удвоение согласной, alt/altIng=доп. верные написания,
+       st=глагол состояния, noCont=не бывает в Continuous, dur=длительный (для Perfect Continuous) --- */
+const VERBS = [
+  {b:'do',  p:'did', pp:'done', th:'does', dur:1, c:['the shopping','the washing-up','the housework','a lot of work','the dishes','nothing','the cooking','morning exercises']},
+  {b:'go',  p:'went', pp:'gone', dur:1, c:['to school','to work','to the cinema','to bed early','to the gym','to London','home','shopping','for a walk','to the park']},
+  {b:'have', st:1, noCont:1, p:'had', th:'has', c:['a big family','two brothers','a new bike','a lot of work','breakfast at home','a good idea','a car','lunch at school']},
+  {b:'get', p:'got', dbl:1, c:['up at seven','a letter','good marks','tired','home late','a present']},
+  {b:'make',p:'made',c:['a cake','a lot of mistakes','tea','a lot of noise','breakfast','a good decision']},
+  {b:'take',p:'took', pp:'taken', c:['the bus to work','photos','a shower','an umbrella','the wrong key']},
+  {b:'give',p:'gave', pp:'given', c:['presents to the children','good advice','the book to Tom','money to charity']},
+  {b:'see', st:1, noCont:1, p:'saw', pp:'seen', c:['this film','my friends','the doctor','a strange bird','the sea']},
+  {b:'come',p:'came', pp:'come', c:['home late','to the party','back from London','early']},
+  {b:'say', p:'said',c:['nothing','a few words','goodbye','sorry']},
+  {b:'tell',p:'told',c:['the truth','a funny story','the news','a lie']},
+  {b:'know', st:1, noCont:1, p:'knew', pp:'known', c:['the answer','this song','my address','a lot about cars']},
+  {b:'think', st:1, dur:1, p:'thought',c:['about the problem','about it','a lot','only about football']},
+  {b:'find', noCont:1,p:'found',c:['the keys','a good job','the answer','a nice café']},
+  {b:'leave',p:'left',c:['home early','the office at six','the bag in the car']},
+  {b:'feel', st:1, p:'felt',c:['tired','better','happy','ill','fine']},
+  {b:'put', p:'put', dbl:1, c:['the books on the shelf','sugar in the tea','the keys on the table']},
+  {b:'bring',p:'brought',c:['sandwiches','the books','good news','an umbrella']},
+  {b:'begin',p:'began', pp:'begun', dbl:1, c:['work at nine','the lesson','a new book']},
+  {b:'buy', p:'bought',c:['bread and milk','a new car','presents','a ticket']},
+  {b:'eat', p:'ate', pp:'eaten', c:['fish','a lot of fruit','breakfast at home','pizza']},
+  {b:'drink',p:'drank', pp:'drunk', c:['tea with lemon','coffee','a lot of water','milk']},
+  {b:'write',p:'wrote', pp:'written', dur:1, c:['letters','a test','an email','poems']},
+  {b:'read',p:'read', dur:1, c:['books in English','the newspaper','a magazine','this article']},
+  {b:'run', p:'ran', pp:'run', dbl:1, dur:1, c:['in the park','five kilometres','to the bus stop']},
+  {b:'sit', p:'sat', dbl:1, dur:1, c:['near the window','on the sofa','at the desk']},
+  {b:'sleep',p:'slept', dur:1, c:['badly','eight hours','well','very little']},
+  {b:'speak',p:'spoke', pp:'spoken', dur:1, c:['English','French','to the teacher','very quietly']},
+  {b:'swim',p:'swam', pp:'swum', dbl:1, dur:1, c:['in the river','very well','in the sea']},
+  {b:'teach',p:'taught', dur:1, c:['English','maths at school','children']},
+  {b:'wear',p:'wore', pp:'worn', c:['a warm coat','jeans','glasses','a uniform']},
+  {b:'win', noCont:1, p:'won', dbl:1, c:['the game','the competition','first prize']},
+  {b:'lose',p:'lost',c:['the keys','the game','the tickets']},
+  {b:'meet',p:'met', c:['friends in the park','Tom at the station','new people']},
+  {b:'pay', p:'paid',c:['for the tickets','the bill','a lot of money']},
+  {b:'send',p:'sent',c:['emails','a letter to Tom','presents','photos']},
+  {b:'sing',p:'sang', pp:'sung', dur:1, c:['very well','songs in English','in a choir']},
+  {b:'break', noCont:1,p:'broke', pp:'broken', c:['the window','a cup','the rules']},
+  {b:'catch', noCont:1,p:'caught',c:['the bus','a cold','fish']},
+  {b:'choose',p:'chose', pp:'chosen', c:['a present','the right answer','a new job']},
+  {b:'drive',p:'drove', pp:'driven', dur:1, c:['to work','very fast','a big car']},
+  {b:'fall', noCont:1,p:'fell', pp:'fallen', c:['off the bike','asleep quickly','on the ice']},
+  {b:'fly', p:'flew', pp:'flown', c:['to Paris','very high','over the mountains']},
+  {b:'forget', noCont:1,p:'forgot', pp:'forgotten', dbl:1, c:['the keys','the address','the password']},
+  {b:'hear', st:1, noCont:1, p:'heard',c:['a strange noise','the news','music']},
+  {b:'hold', st:1, p:'held',c:['the door','a party','the flag']},
+  {b:'keep', st:1, p:'kept',c:['the money in the bank','a diary','the letters']},
+  {b:'understand', st:1, noCont:1, p:'understood',c:['the rule','this question','French']},
+  {b:'spend',p:'spent',c:['a lot of money','the holidays in Spain','two hours there']},
+  {b:'build',p:'built',c:['a house','a bridge','a garage']},
+  {b:'cut', p:'cut', dbl:1, c:['the bread','the grass','paper']},
+  /* правильные */
+  {b:'work', dur:1, c:['in an office','very hard','at a bank','from home']},
+  {b:'play', dur:1, c:['football','the guitar','tennis','computer games','chess']},
+  {b:'watch', dur:1, c:['TV','films at home','football matches','a new series']},
+  {b:'study', dur:1, c:['English','maths','at university','very hard']},
+  {b:'stop', dbl:1, c:['near the shop','the car','at the traffic lights']},
+  {b:'plan', dbl:1, c:['a trip to Italy','a party','the holidays']},
+  {b:'drop', noCont:1, dbl:1, c:['the plate','the keys','the ball']},
+  {b:'travel', dbl:1, dur:1, alt:['traveled'], altIng:['traveling'], c:['a lot','by train','to Europe']},
+  {b:'like', st:1, noPerf:1, noCont:1, c:['ice cream','loud music','this city','cats']},
+  {b:'live', st:1, dur:1, c:['in Moscow','near the park','in a big house','with parents']},
+  {b:'want', st:1, noPerf:1, noCont:1, c:['a new phone','some water','more time','a dog']},
+  {b:'need', st:1, noPerf:1, noCont:1, c:['help','more time','a new bag','money']},
+  {b:'help', c:['the children','friends','the teacher','at home']},
+  {b:'call', c:['the doctor','friends','a taxi','the police']},
+  {b:'clean', dur:1, c:['the room','the windows','the car','the kitchen']},
+  {b:'close', c:['the door','the window','the shop at six']},
+  {b:'open', c:['the window','the shop at nine','the box']},
+  {b:'cook', dur:1, c:['dinner','pasta','very well','breakfast']},
+  {b:'dance', dur:1, c:['very well','at parties','all night']},
+  {b:'finish',c:['work at six','the book','the test']},
+  {b:'fix',  c:['the car','old bikes','the computer']},
+  {b:'listen', dur:1, c:['to music','to the radio','to the teacher']},
+  {b:'look', st:1, c:['tired','at the pictures','very happy']},
+  {b:'love', st:1, noPerf:1, noCont:1, c:['this song','animals','the sea']},
+  {b:'miss', noCont:1, c:['the bus','the lesson','the train']},
+  {b:'move', c:['to another city','the table','to London']},
+  {b:'try',  c:['new things','very hard','new dishes']},
+  {b:'use',  c:['a computer','this room','the internet']},
+  {b:'visit',c:['museums','grandparents','the doctor','friends in London']},
+  {b:'wash', dur:1, c:['the dishes','the car','the windows']},
+  {b:'carry',c:['heavy bags','the boxes','an umbrella']},
+  {b:'enjoy',c:['the party','the film','the holidays']},
+  {b:'stay', dur:1, c:['at home','at a hotel','with friends','in bed']},
+  {b:'cry', dur:1, c:['a lot','very loudly','all night']},
+  {b:'hurry',c:['to school','to the station','home']},
+  {b:'tidy', dur:1, c:['the room','the desk','the flat']},
+  {b:'start',c:['work at eight','a new project','the lesson']},
+  {b:'walk', dur:1, c:['to school','in the park','very fast']},
+  {b:'talk', dur:1, c:['about the film','to the teacher','very quickly']},
+  {b:'answer',c:['the questions','the phone','very quickly']},
+  {b:'ask',  c:['a lot of questions','for help','the teacher']}
+];
+
+/* ================== времена: названия, формулы, смысл ================== */
+const TENSE_RU = {
+  pres:'Present Simple',   past:'Past Simple',   fut:'Future Simple',
+  presC:'Present Continuous', pastC:'Past Continuous', futC:'Future Continuous',
+  presP:'Present Perfect', pastP:'Past Perfect', futP:'Future Perfect',
+  presPC:'Present Perfect Continuous', pastPC:'Past Perfect Continuous', futPC:'Future Perfect Continuous'
+};
+const FORM_RU = {aff:'утверждение', neg:'отрицание', q:'вопрос'};
+const FORMULA = {
+  pres  :'глагол в начальной форме, с he / she / it — окончание <b>-s</b>',
+  past  :'вторая форма глагола',
+  fut   :'<b>will</b> + начальная форма',
+  presC :'<b>am / is / are</b> + глагол с <b>-ing</b>',
+  pastC :'<b>was / were</b> + глагол с <b>-ing</b>',
+  futC  :'<b>will be</b> + глагол с <b>-ing</b>',
+  presP :'<b>have / has</b> + третья форма',
+  pastP :'<b>had</b> + третья форма для всех лиц',
+  futP  :'<b>will have</b> + третья форма',
+  presPC:'<b>have / has been</b> + глагол с <b>-ing</b>',
+  pastPC:'<b>had been</b> + глагол с <b>-ing</b>',
+  futPC :'<b>will have been</b> + глагол с <b>-ing</b>'
+};
+const WHEN_RU = {
+  pres  :'Регулярное, повторяющееся действие.',
+  past  :'Законченное действие в прошлом.',
+  fut   :'Действие в будущем.',
+  presC :'Действие идёт прямо сейчас.',
+  pastC :'Действие длилось в конкретный момент в прошлом.',
+  futC  :'Действие будет длиться в конкретный момент в будущем.',
+  presP :'Действие уже произошло, важен результат сейчас.',
+  pastP :'Действие закончилось раньше другого момента в прошлом.',
+  futP  :'Действие закончится к моменту в будущем.',
+  presPC:'Действие началось раньше и всё ещё длится.',
+  pastPC:'Действие длилось до какого-то момента в прошлом.',
+  futPC :'Действие будет длиться до какого-то момента в будущем.'
+};
+/* be меняется сам и живёт по своим формулам */
+const FORMULA_BE = {
+  pres :'<b>am / is / are</b> — be меняется сам, без do',
+  past :'<b>was / were</b>',
+  fut  :'<b>will be</b>',
+  presP:'<b>have / has been</b>',
+  pastP:'<b>had been</b>',
+  futP :'<b>will have been</b>'
+};
+const TENSES_ALL = Object.keys(TENSE_RU);
+const isCont = t => /C$/.test(t);
+const isPerfCont = t => /PC$/.test(t);
+const isPerf = t => /P$/.test(t) || isPerfCont(t);
+const isSimple = t => t==='pres' || t==='past';
+
+/* ================== формы глагола ================== */
+function ingForm(v, dbl){
+  if(v==='be') return 'being';
+  if(/ie$/.test(v))              return v.slice(0,-2)+'ying';   /* lie → lying */
+  if(/ee$/.test(v))              return v+'ing';                /* see → seeing */
+  if(/[^aeiou]e$/.test(v))       return v.slice(0,-1)+'ing';    /* make → making */
+  if(dbl)                        return v+v.slice(-1)+'ing';    /* sit → sitting */
+  return v+'ing';
+}
+function ruleIng(v, dbl){
+  if(/ee$/.test(v))        return '';
+  if(/[^aeiou]e$/.test(v)) return 'конечная <b>-e</b> отбрасывается';
+  if(dbl)                  return 'краткая гласная → последняя согласная <b>удваивается</b>';
+  return '';
+}
+
+/* краткие формы: полная и краткая равнозначны в обе стороны */
+const CONTR_POS = {am:"'m", is:"'s", are:"'re", has:"'s", have:"'ve", had:"'d", will:"'ll"};
+const CONTR_NEG = {is:"isn't", are:"aren't", was:"wasn't", were:"weren't",
+                   has:"hasn't", have:"haven't", had:"hadn't", will:"won't",
+                   do:"don't", does:"doesn't", did:"didn't"};
+function affAnswers(w){
+  const out = [w.join(' ')];
+  if(w.length > 1 && CONTR_POS[w[0]]) out.push(CONTR_POS[w[0]] + ' ' + w.slice(1).join(' '));
+  return out;
+}
+function negAnswers(w){
+  const a = w[0], r = w.slice(1).join(' '), tail = r ? ' ' + r : '';
+  const out = [];
+  if(a === 'am') out.push("'m not" + tail, 'am not' + tail);
+  else {
+    if(CONTR_NEG[a]) out.push(CONTR_NEG[a] + tail);
+    out.push(a + ' not' + tail);
+    if(CONTR_POS[a]) out.push(CONTR_POS[a] + ' not' + tail);
+  }
+  return out;
+}
+
+/* полная группа глагола: массив слов, первое — вспомогательный */
+function phraseFor(v, tense, agr){
+  const b = v.b;
+  const third = v.th || thirdPerson(b);
+  const past  = v.p  || pastRegular(b, v.dbl);
+  const pp    = v.pp || past;
+  const ing   = ingForm(b, v.dbl);
+  const hv    = agr === '3' ? 'has' : 'have';
+  switch(tense){
+    case 'pres':   return {aff:[agr==='3' ? third : b], doAux: agr==='3' ? 'does' : 'do', base:[b]};
+    case 'past':   return {aff:[past], doAux:'did', base:[b]};
+    case 'fut':    return {aff:['will', b]};
+    case 'presC':  return {aff:[beForm(agr), ing]};
+    case 'pastC':  return {aff:[bePast(agr), ing]};
+    case 'futC':   return {aff:['will','be', ing]};
+    case 'presP':  return {aff:[hv, pp]};
+    case 'pastP':  return {aff:['had', pp]};
+    case 'futP':   return {aff:['will','have', pp]};
+    case 'presPC': return {aff:[hv,'been', ing]};
+    case 'pastPC': return {aff:['had','been', ing]};
+    case 'futPC':  return {aff:['will','have','been', ing]};
+  }
+}
+function bePhraseFor(tense, agr){
+  switch(tense){
+    case 'pres':  return {aff:[beForm(agr)]};
+    case 'past':  return {aff:[bePast(agr)]};
+    case 'fut':   return {aff:['will','be']};
+    case 'presP': return {aff:[agr==='3' ? 'has' : 'have','been']};
+    case 'pastP': return {aff:['had','been']};
+    case 'futP':  return {aff:['will','have','been']};
+  }
+}
+const BE_TENSES = ['pres','past','fut','presP','pastP','futP'];
+
+/* ширина пропуска считается по всем трём лицам — она не должна выдавать форму */
+function widthFor(mk, tense, form){
+  let w = 0;
+  ['i','3','pl'].forEach(agr=>{
+    const p = mk(tense, agr);
+    if(!p) return;
+    const list = form === 'aff' ? affAnswers(p.aff)
+               : form === 'neg' ? (p.doAux ? negAnswers([p.doAux].concat(p.base)) : negAnswers(p.aff))
+               : (p.doAux ? p.base : p.aff.slice(1));
+    const first = Array.isArray(list[0]) ? list[0].join(' ') : list[0];   /* по краткой форме: длинную поле прокрутит */
+    if(first && first.length > w) w = first.length;
+  });
+  return w + 3;
+}
+
+/* ================== пояснение ================== */
+function formNote(v, tense, agr){
+  const b = v.b;
+  if(b === 'be') return '';
+  const past = v.p || pastRegular(b, v.dbl);
+  const pp   = v.pp || past;
+  if(isCont(tense)){
+    const r = ruleIng(b, v.dbl);
+    return '<b>' + b + ' → ' + ingForm(b, v.dbl) + '</b>' + (r ? ' — ' + r : '') + '. ';
+  }
+  if(isPerf(tense)){
+    return v.p ? '<b>' + b + ' → ' + past + ' → ' + pp + '</b> — неправильный глагол. '
+               : '<b>' + b + ' → ' + pp + '</b> — правильный глагол, третья форма совпадает со второй'
+                 + (rulePast(b, v.dbl) ? ', ' + rulePast(b, v.dbl) : '') + '. ';
+  }
+  if(tense === 'pres' && agr === '3'){
+    const third = v.th || thirdPerson(b);
+    return '<b>' + b + ' → ' + third + '</b>' + (ruleThird(b) ? ' — ' + ruleThird(b) : '') + '. ';
+  }
+  if(tense === 'pres'){
+    return 'С I / you / we / they глагол остаётся в начальной форме — <b>' + b + '</b>. ';
+  }
+  if(tense === 'past'){
+    return v.p ? '<b>' + b + ' → ' + past + '</b> — неправильный глагол'
+                 + (past === b ? ' (пишется так же, читается иначе)' : '') + '. '
+               : '<b>' + b + ' → ' + past + '</b>'
+                 + (rulePast(b, v.dbl) ? ', ' + rulePast(b, v.dbl) : '') + '. ';
+  }
+  return '';
+}
+
+/* ================== сборка задания ================== */
+const T = s => ({t:'text', v:s});
+const B = (ans,hint,w) => ({t:'blank', a:ans, hint:hint||'', w:w||0});
+
+function markerFor(v, tense, be){
+  if(be && MARK_BE[tense]) return pick(MARK_BE[tense]);
+  if(!be && v.st && MARK_ST[tense]) return pick(MARK_ST[tense]);
+  return pick(MARK[tense]);
+}
+
+function makeVerbItem(cfg){
+  const tense = pick(cfg.tenses), form = pick(cfg.forms);
+
+  /* какие глаголы вообще возможны в этом времени */
+  let be = false, v = null;
+  if(isPerfCont(tense)){
+    v = pick(VERBS.filter(x => x.dur));
+  }else if(isCont(tense)){
+    v = pick(VERBS.filter(x => !x.noCont && !x.st));   /* глаголы состояния не бывают в Continuous */
+  }else if(BE_TENSES.indexOf(tense) >= 0 && Math.random() < 0.11){
+    be = true;
+  }else if(tense === 'pastP' || tense === 'futP'){
+    v = pick(VERBS.filter(x => !x.noPerf));            /* «will have wanted» звучит неестественно */
+  }else{
+    v = pick(VERBS);
+  }
+
+  const s = pick(SUBJ);
+  let pool = be ? BE.c : v.c;
+  if(form !== 'aff') pool = pool.filter(x => !/\bnothing\b/.test(x));   /* без двойного отрицания */
+  if(tense !== 'pres' && tense !== 'past' && tense !== 'fut')             /* «work at nine» спорит с маркером */
+    pool = pool.filter(x => !/\bat (five|six|seven|eight|nine|ten|eleven)\b/.test(x));
+  const comp = pick(pool.length ? pool : (be ? BE.c : v.c));
+  const mark = markerFor(v || {}, tense, be);
+  const tag  = TENSE_RU[tense] + ' · ' + FORM_RU[form];
+  const hintWord = be ? 'be' : v.b;
+
+  const mk = be ? (t,agr) => bePhraseFor(t,agr) : (t,agr) => phraseFor(v,t,agr);
+  const p  = mk(tense, s.a);
+  const w  = widthFor(mk, tense, form);
+  const tail = (comp ? ' ' + comp : '') + ' ' + mark;
+
+  /* --- утверждение --- */
+  if(form === 'aff'){
+    return {topic:'verb', tag,
+      parts:[T(s.t + ' '), B(affAnswers(p.aff).concat(v && v.altIng && isCont(tense) ? [p.aff.slice(0,-1).concat(v.altIng[0]).join(' ')] : [])
+                             .concat(v && v.alt && tense === 'past' ? v.alt : []), hintWord, w),
+             T(tail + '.')],
+      note: be
+        ? TENSE_RU[tense] + ': ' + FORMULA_BE[tense] + '. Здесь — <b>' + p.aff.join(' ') + '</b>. ' + WHEN_RU[tense]
+        : TENSE_RU[tense] + ': ' + FORMULA[tense] + '. ' + formNote(v, tense, s.a) + WHEN_RU[tense]};
+  }
+
+  /* --- отрицание --- */
+  if(form === 'neg'){
+    const words = p.doAux ? [p.doAux].concat(p.base) : p.aff;
+    const note = p.doAux
+      ? 'Отрицание в ' + TENSE_RU[tense] + ': <b>' + p.doAux + ' not (' + CONTR_NEG[p.doAux]
+        + ') + начальная форма</b>. Время уже во вспомогательном глаголе, поэтому сам глагол не меняется — <b>'
+        + CONTR_NEG[p.doAux] + ' ' + v.b + '</b>.'
+      : 'Отрицание в ' + TENSE_RU[tense] + ': <b>not</b> ставится после первого вспомогательного глагола — <b>'
+        + negAnswers(p.aff)[0] + '</b>. Никаких do / does / did: вспомогательный уже есть.';
+    return {topic:'verb', tag,
+      parts:[T(s.t + ' '), B(negAnswers(words), 'not / ' + hintWord, w), T(tail + '.')],
+      note};
+  }
+
+  /* --- вопрос --- */
+  if(p.doAux){
+    const aux = cap(p.doAux);
+    return {topic:'verb', tag,
+      parts:[B([aux], '', 6), T(' ' + s.l + ' '), B([v.b], hintWord, w), T(tail + '?')],
+      note:'Вопрос в ' + TENSE_RU[tense] + ': <b>' + aux + ' + подлежащее + начальная форма</b>. '
+           + (p.aff[0] === v.b
+              ? 'С I / you / we / they — <b>Do</b>, с he / she / it — <b>Does</b>.'
+              : 'Окончание и время уходят во вспомогательный: не «' + aux + ' ' + s.l + ' ' + p.aff[0]
+                + '», а <b>' + aux + ' ' + s.l + ' ' + v.b + '</b>.')};
+  }
+  const aux = cap(p.aff[0]), rest = p.aff.slice(1).join(' ');
+  const qNote = 'Вопрос в ' + TENSE_RU[tense] + ': первый вспомогательный глагол выходит перед подлежащим — <b>'
+              + aux + ' ' + s.l + (rest ? ' ' + rest : '') + ' …?</b>' + (be && !rest ? ' Никаких do / does / did.' : '');
+  if(!rest){
+    return {topic:'verb', tag,
+      parts:[B([aux], hintWord, w + 3), T(' ' + s.l + tail + '?')], note:qNote};
+  }
+  return {topic:'verb', tag,
+    parts:[B([aux], '', 6), T(' ' + s.l + ' '), B([rest], hintWord, w), T(tail + '?')], note:qNote};
+}
+
+/* ==================================================================
+   2. Местоимения: I — my — me
+   ================================================================== */
+const PRON = [
+  {s:'I',   p:'my',   o:'me',   a:'i'},
+  {s:'you', p:'your', o:'you',  a:'pl'},
+  {s:'he',  p:'his',  o:'him',  a:'3'},
+  {s:'she', p:'her',  o:'her',  a:'3'},
+  {s:'it',  p:'its',  o:'it',   a:'3'},
+  {s:'we',  p:'our',  o:'us',   a:'pl'},
+  {s:'they',p:'their',o:'them', a:'pl'}
+];
+/* # — пропуск, %verb% — глагол, который согласуется с местоимением */
+const PT = [
+  {k:'s', x:'# %live% in a big city.',        no:['it']},
+  {k:'s', x:'# %work% at a hospital.',        no:['it']},
+  {k:'s', x:'# %like% ice cream.',            no:['it']},
+  {k:'s', x:'# %go% to school every day.',    no:['it']},
+  {k:'s', x:'# %speak% English very well.',   no:['it']},
+  {k:'s', x:'# %have% a new phone.',          no:['it']},
+  {k:'s', x:'# %play% football on Sundays.',  no:['it']},
+  {k:'s', x:'# %want% to go home.',           no:['it']},
+  {k:'s', x:'# %be% very tired today.'},
+  {k:'s', x:'# %be% my best friend.'},
+  {k:'s', x:'# %be% always late.'},
+  {k:'s', x:'# %read% books in English.',     no:['it']},
+  {k:'p', x:'This is # sister.',              no:['it']},
+  {k:'p', x:'# car is very old.',             no:['it']},
+  {k:'p', x:'I like # new phone.',            no:['it']},
+  {k:'p', x:'# parents live in London.',      no:['it']},
+  {k:'p', x:'Is this # book?',                no:['it']},
+  {k:'p', x:'We visited # house last week.',  no:['it']},
+  {k:'p', x:'# friends are very nice.',       no:['it']},
+  {k:'p', x:'He forgot # keys at home.',      no:['it']},
+  {k:'p', x:'# room is on the second floor.', no:['it']},
+  {k:'p', x:'The dog wants # ball.'},
+  {k:'p', x:'# teacher is very strict.',      no:['it']},
+  {k:'p', x:'Where are # glasses?',           no:['it']},
+  {k:'p', x:'The cat is washing # face.',     only:['it']},
+  {k:'o', x:'Please help #.',                 no:['it']},
+  {k:'o', x:'I saw # yesterday.'},
+  {k:'o', x:'Can you call # tomorrow?',       no:['it']},
+  {k:'o', x:'She gave # a present.',          no:['it']},
+  {k:'o', x:'Look at #!'},
+  {k:'o', x:'Tom is waiting for #.',          no:['it']},
+  {k:'o', x:'Listen to # carefully.',         no:['it']},
+  {k:'o', x:'This letter is for #.',          no:['it']},
+  {k:"o", x:"Don't tell # about the party.",  no:['it']},
+  {k:'o', x:'My father drove # to school.',   no:['it']},
+  {k:'o', x:'The teacher asked # a question.',no:['it']},
+  {k:'o', x:'Come with #, please.',           no:['it','you']},
+  {k:'o', x:"I don't know #."}
+];
+const PK_RU = {s:'подлежащее', p:'притяжательное', o:'дополнение'};
+
+function conj(base, agr){
+  if(base==='be')   return agr==='i' ? 'am' : agr==='3' ? 'is' : 'are';
+  if(base==='have') return agr==='3' ? 'has' : 'have';
+  return agr==='3' ? thirdPerson(base) : base;
+}
+function makePronounItem(){
+  const tpl = pick(PT);
+  const pool = PRON.filter(p => tpl.only ? tpl.only.includes(p.s) : !(tpl.no||[]).includes(p.s));
+  const pr = pick(pool);
+  const ans = tpl.k==='s' ? pr.s : tpl.k==='p' ? pr.p : pr.o;
+  const text = tpl.x.replace(/%(\w+)%/g, (_,v)=>conj(v, pr.a));
+  const i = text.indexOf('#');
+  const before = text.slice(0,i), after = text.slice(i+1);
+  const shown = before.trim() === '' ? cap(ans) : ans;   /* пропуск в начале предложения */
+
+  let note = tpl.k==='s' ? 'Подлежащее (кто? что?) — личная форма: <b>'+pr.s+'</b>.'
+           : tpl.k==='p' ? 'Перед существительным (чей?) — притяжательная форма: '+pr.s+' → <b>'+pr.p+'</b>.'
+           : 'После глагола или предлога (кого? кому?) — объектная форма: '+pr.s+' → <b>'+pr.o+'</b>.';
+  if(ans==='its')  note += ' <b>its</b> пишется без апострофа; <b>it\'s</b> = it is.';
+  if(ans==='her')  note += ' У <b>her</b> совпадают притяжательная и объектная формы.';
+  if(ans==='you')  note += ' У <b>you</b> личная и объектная формы одинаковы.';
+  if(ans==='his')  note += ' <b>his</b> — и «его» перед существительным, и «его» отдельно.';
+
+  return {topic:'pronoun', tag:'Местоимения · '+PK_RU[tpl.k],
+    parts:[T(before), B([shown], pr.s, 8), T(after)], note};
+}
+
+/* ==================================================================
+   3. Артикли
+   ================================================================== */
+const ART = [
+  "She is ~a~ teacher.|Профессия в единственном числе — <b>a / an</b>.",
+  "He is ~an~ engineer.|Перед гласным звуком — <b>an</b>: an engineer.",
+  "I saw ~a~ cat in the garden. ~The~ cat was black.|Первое упоминание — <b>a</b>, повторное — <b>the</b>.",
+  "Look at ~the~ sun!|Единственный в своём роде предмет — <b>the</b>.",
+  "~The~ moon is very bright tonight.|Единственный в своём роде — <b>the moon</b>.",
+  "I go to work by ~-~ bus.|<b>by bus / by car / by train</b> — без артикля.",
+  "We have ~-~ breakfast at seven.|Названия приёмов пищи — без артикля.",
+  "She plays ~the~ piano very well.|Музыкальные инструменты — с <b>the</b>.",
+  "He plays ~-~ football every Sunday.|Виды спорта и игры — без артикля.",
+  "~-~ Water is very important.|Неисчисляемое в общем смысле — без артикля.",
+  "I like ~-~ dogs.|Множественное число в общем смысле — без артикля.",
+  "This is ~the~ best film I know.|Превосходная степень — всегда <b>the</b>.",
+  "It was ~an~ interesting book.|Перед гласным звуком — <b>an interesting</b>.",
+  "He is ~a~ university student.|University читается /juː/ — согласный звук, поэтому <b>a</b>.",
+  "I waited for ~an~ hour.|В слове hour «h» не читается, звук гласный — <b>an</b>.",
+  "My father is at ~-~ home.|<b>at home</b> — устойчивое сочетание без артикля.",
+  "The children go to ~-~ school every day.|<b>go to school</b> — учиться; здание не имеется в виду.",
+  "We went to ~the~ school to meet the teacher.|Здесь школа — конкретное здание, поэтому <b>the</b>.",
+  "~The~ Volga is a long river.|Названия рек — с <b>the</b>.",
+  "I live in ~-~ Moscow.|Названия городов — без артикля.",
+  "He comes from ~the~ USA.|<b>the USA</b>, <b>the UK</b> — исключения среди стран.",
+  "She speaks ~-~ English very well.|Названия языков — без артикля.",
+  "Give me ~a~ pen, please.|Любая, неопределённая ручка — <b>a</b>.",
+  "Where is ~the~ pen I gave you?|Конкретная, уже известная — <b>the</b>.",
+  "There is ~a~ book on the table.|В обороте <b>there is</b> новый предмет — <b>a</b>.",
+  "~The~ book on the table is mine.|Уточнение «на столе» делает предмет конкретным — <b>the</b>.",
+  "I usually go to ~-~ bed at eleven.|<b>go to bed</b> — без артикля.",
+  "What ~a~ beautiful day!|Восклицание <b>What a …!</b> с исчисляемым в ед. ч.",
+  "He has ~an~ old car.|Перед гласным звуком — <b>an old</b>.",
+  "She is ~the~ first student in the list.|Порядковые числительные — с <b>the</b>.",
+  "Open ~the~ window, please.|Собеседник понимает, о каком окне речь — <b>the</b>.",
+  "I don't like ~-~ coffee.|Неисчисляемое в общем смысле — без артикля.",
+  "~-~ Money doesn't buy happiness.|Money — неисчисляемое, в общем смысле без артикля.",
+  "He is ~a~ good doctor.|Профессия в ед. ч. — <b>a</b>.",
+  "We saw ~an~ elephant at the zoo.|Перед гласным звуком — <b>an</b>.",
+  "~The~ Earth goes round the sun.|Единственный в своём роде — <b>the Earth</b>.",
+  "Let's go to ~the~ cinema.|<b>go to the cinema / the theatre</b> — с the.",
+  "I have ~a~ sister and ~a~ brother.|Оба существительных исчисляемые в ед. ч. — <b>a</b>.",
+  "~The~ weather was terrible yesterday.|Со словом weather употребляется <b>the</b>.",
+  "He went to ~-~ London last year.|Названия городов — без артикля.",
+  "She is ~an~ honest girl.|В honest «h» не читается — звук гласный, <b>an</b>.",
+  "It takes ~a~ minute.|Исчисляемое в ед. ч., «одна минута» — <b>a</b>.",
+  "They live in ~a~ big house.|Первое упоминание — <b>a</b>.",
+  "~The~ house is very old.|Уже известный дом — <b>the</b>.",
+  "I need ~-~ information.|Information — неисчисляемое, без артикля.",
+  "Do you play ~the~ guitar?|Музыкальные инструменты — с <b>the</b>.",
+  "My brother is ~a~ pupil.|Кто он такой — <b>a</b>.",
+  "We have ~-~ lunch at school.|Приёмы пищи — без артикля.",
+  "He is ~the~ tallest boy in our class.|Превосходная степень — <b>the</b>.",
+  "Look at ~the~ sky. It is grey today.|Единственное в своём роде — <b>the sky</b>.",
+  "~-~ Cats like ~-~ milk.|Множественное число и неисчисляемое в общем смысле — без артикля.",
+  "She bought ~a~ new dress.|Первое упоминание — <b>a</b>.",
+  "~The~ dress was too expensive.|Повторное упоминание — <b>the</b>.",
+  "I met ~a~ friend of mine.|Один из друзей, неопределённый — <b>a</b>.",
+  "We travel by ~-~ car.|<b>by car</b> — без артикля.",
+  "~-~ Winter is my favourite season.|Времена года в общем смысле — без артикля.",
+  "In ~the~ morning I drink tea.|<b>in the morning / afternoon / evening</b> — с the.",
+  "At ~-~ night I sleep badly.|<b>at night</b> — исключение, без артикля.",
+  "He is ~an~ actor.|Перед гласным звуком — <b>an</b>.",
+  "This is ~a~ useful idea.|Useful читается /juː/ — согласный звук, поэтому <b>a</b>.",
+  "She has ~an~ umbrella.|Перед гласным звуком — <b>an</b>.",
+  "I would like ~an~ apple.|Перед гласным звуком — <b>an</b>.",
+  "~The~ apples in this shop are very good.|Уточнение «в этом магазине» — <b>the</b>.",
+  "They are ~-~ students.|Множественное число — артикля a / an не бывает.",
+  "He works as ~a~ driver.|Профессия — <b>a</b>.",
+  "Can you close ~the~ door?|Конкретная дверь, понятная обоим — <b>the</b>.",
+  "We had ~a~ good time.|Устойчивое <b>have a good time</b>.",
+  "~-~ Chess is a difficult game.|Названия игр — без артикля.",
+  "My mother is ~a~ nurse.|Профессия — <b>a</b>.",
+  "I read ~a~ magazine yesterday.|Первое упоминание — <b>a</b>.",
+  "~The~ magazine was very boring.|Повторное упоминание — <b>the</b>.",
+  "He is ~the~ only student who knows it.|Со словом <b>only</b> — the.",
+  "We go to ~-~ work by train.|<b>go to work</b> и <b>by train</b> — без артикля.",
+  "Do you have ~a~ dog?|Исчисляемое в ед. ч. — <b>a</b>.",
+  "~The~ girl in the red dress is my sister.|Есть уточнение — предмет конкретный, <b>the</b>.",
+  "~-~ Children need ~-~ love.|Множественное число и неисчисляемое в общем смысле — без артикля.",
+  "It is ~an~ easy question.|Перед гласным звуком — <b>an easy</b>.",
+  "She is ~a~ young woman.|Исчисляемое в ед. ч. — <b>a</b>.",
+  "I saw ~the~ film you told me about.|Есть уточнение — <b>the</b>.",
+  "Yesterday I bought ~a~ car and ~a~ bike.|Оба предмета упомянуты впервые — <b>a</b>.",
+  "Turn off ~the~ light, please.|Конкретный свет в этой комнате — <b>the</b>.",
+  "~-~ Tom is my best friend.|Имена людей — без артикля.",
+  "He lives on ~the~ second floor.|Порядковое числительное — <b>the</b>.",
+  "We have ~-~ dinner at seven.|Приёмы пищи — без артикля.",
+  "There is ~a~ car near the house.|Новый предмет в there is — <b>a</b>.",
+  "~The~ car near the house is new.|Тот самый, уже названный — <b>the</b>.",
+  "She wants to be ~a~ doctor.|Профессия — <b>a</b>.",
+  "~-~ Health is more important than ~-~ money.|Неисчисляемые в общем смысле — без артикля.",
+  "He plays ~-~ tennis on Sundays.|Виды спорта — без артикля.",
+  "I have ~an~ idea!|Перед гласным звуком — <b>an idea</b>.",
+  "~The~ Thames is in London.|Названия рек — с <b>the</b>.",
+  "My sister is ~an~ artist.|Перед гласным звуком — <b>an</b>."
+];
+function makeArticleItem(i){
+  const [raw, note] = ART[i].split('|');
+  const parts = [];
+  raw.split('~').forEach((chunk,k)=>{
+    if(k%2===0){ if(chunk) parts.push(T(chunk)); }
+    else parts.push(B([chunk], '', 5));
+  });
+  return {topic:'article', tag:'Артикли', parts, note,
+          ph:'Впиши a, an или the. Если артикль не нужен — поставь дефис «-».'};
+}
+
+/* ==================================================================
+   4. Поток заданий
+   ================================================================== */
+function sig(it){ return it.parts.map(p=>p.t==='text'?p.v:'□').join(''); }
+
+const TOPIC_W = {verb:3, article:1.1, pronoun:1.1};   /* основной упор — глаголы */
+function pickTopic(list){
+  let sum = 0; list.forEach(t => sum += TOPIC_W[t]);
+  let r = Math.random()*sum;
+  for(const t of list){ r -= TOPIC_W[t]; if(r <= 0) return t; }
+  return list[list.length-1];
+}
+function makeTopicItem(topic, cfg){
+  return topic==='verb' ? makeVerbItem(cfg)
+       : topic==='article' ? makeArticleItem(rnd(ART.length))
+       : makePronounItem();
+}
+function buildItem(cfg, recent){
+  let it;
+  for(let tries=0; tries<24; tries++){
+    it = makeTopicItem(pickTopic(cfg.topics), cfg);
+    if(recent.indexOf(sig(it)) < 0) return it;
+  }
+  return it;
+}
+
+/* полный текст с подставленными ответами */
+function fullText(it){
+  return it.parts.map(p => p.t==='text' ? p.v : (p.a[0]==='-' ? '' : p.a[0]))
+          .join('').replace(/\s+([.,!?])/g,'$1').replace(/\s{2,}/g,' ').trim();
+}
+
+/* ==================================================================
+   5. Проверка ответа
+   ================================================================== */
+const ZERO = ['-','–','—','−','x','х','0','zero','no','none','нет','ноль','нуль'];
+function norm(s){
+  return String(s).toLowerCase()
+    .replace(/[’‘ʼ`´]/g,"'")
+    .replace(/\s+/g,' ').trim().replace(/[.!?]+$/,'');
+}
+function normAns(s){
+  const n = norm(s);
+  return ZERO.indexOf(n) >= 0 ? '-' : n;
+}
+function isRight(input, blank){
+  const a = normAns(input);
+  return blank.a.some(x => normAns(x) === a);
+}
+/* тот же ответ, но без апострофа или слитно — подскажем, что именно потерялось */
+const bare = s => normAns(s).replace(/['\s]/g,'');
+function isNearMiss(input, blank){
+  return !isRight(input, blank) && blank.a.some(x => bare(x) === bare(input));
+}
+
+/* ==================================================================
+   6. Интерфейс
+   ================================================================== */
+function boot(){
+  const $ = id => document.getElementById(id);
+  const DEF = {topics:['verb','article','pronoun'], tenses:TENSES_ALL.slice(),
+               forms:['aff','neg','q'], theme:'dark'};
+  const KEY = 'en2-trainer-v2';
+  let cfg = Object.assign({}, DEF);
+  try{ const s = JSON.parse(localStorage.getItem(KEY)||'null'); if(s) cfg = Object.assign(cfg, s); }catch(e){}
+  const save = () => { try{ localStorage.setItem(KEY, JSON.stringify(cfg)); }catch(e){} };
+
+  const st = {total:0, correct:0, streak:0, item:null, checked:false, recent:[], mistakes:[]};
+
+  /* ---- тема ---- */
+  const SUN = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.2 5.2l1.4 1.4M17.4 17.4l1.4 1.4M18.8 5.2l-1.4 1.4M6.6 17.4l-1.4 1.4"/></svg>';
+  const MOON = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M20 14.5A8.5 8.5 0 0 1 9.5 4a8.5 8.5 0 1 0 10.5 10.5z"/></svg>';
+  const AUTO = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="8.5"/><path d="M12 3.5v17" /><path d="M12 3.5a8.5 8.5 0 0 1 0 17z" fill="currentColor" stroke="none"/></svg>';
+  function applyTheme(){
+    const r = document.documentElement;
+    if(cfg.theme==='auto') r.removeAttribute('data-theme'); else r.setAttribute('data-theme', cfg.theme);
+    $('themeBtn').innerHTML = cfg.theme==='auto' ? AUTO : cfg.theme==='dark' ? MOON : SUN;
+    $('themeBtn').title = 'Тема: ' + (cfg.theme==='auto'?'как в системе':cfg.theme==='dark'?'тёмная':'светлая');
+  }
+  $('themeBtn').addEventListener('click', ()=>{
+    cfg.theme = cfg.theme==='dark' ? 'light' : cfg.theme==='light' ? 'auto' : 'dark';
+    applyTheme(); save();
+  });
+  applyTheme();
+
+  /* ---- настройки ---- */
+  const panel = $('panel'), setBtn = $('setBtn');
+  setBtn.addEventListener('click', ()=>{
+    const open = panel.hidden;
+    panel.hidden = !open;
+    setBtn.setAttribute('aria-expanded', String(open));
+    if(!open) focusFirst();
+  });
+  function syncChips(){
+    panel.querySelectorAll('.row[data-group]').forEach(row=>{
+      const g = row.dataset.group;
+      row.querySelectorAll('.chip').forEach(c=>{
+        c.setAttribute('aria-pressed', String(cfg[g].indexOf(c.dataset.key) >= 0));
+      });
+    });
+    const verbsOn = cfg.topics.indexOf('verb') >= 0;
+    panel.querySelectorAll('.row[data-group="tenses"] .chip, .row[data-group="forms"] .chip')
+      .forEach(c=>{ c.style.opacity = verbsOn ? '' : '.4'; c.disabled = !verbsOn; });
+  }
+  panel.querySelectorAll('.row[data-group] .chip').forEach(chip=>{
+    chip.addEventListener('click', ()=>{
+      const g = chip.closest('.row').dataset.group, k = chip.dataset.key, arr = cfg[g], i = arr.indexOf(k);
+      if(i >= 0){
+        if(arr.length === 1){
+          chip.classList.remove('locked'); void chip.offsetWidth; chip.classList.add('locked'); return;
+        }
+        arr.splice(i,1);
+      } else arr.push(k);
+      syncChips(); save(); next();
+    });
+  });
+  syncChips();
+  $('resetBtn').addEventListener('click', ()=>{
+    st.total = st.correct = st.streak = 0; st.mistakes = []; st.recent = [];
+    renderStats(); renderLog(); next();
+  });
+
+  /* ---- статистика ---- */
+  function renderStats(){
+    $('stCorrect').textContent = st.correct;
+    $('stTotal').textContent = st.total;
+    $('stAcc').textContent = st.total ? Math.round(st.correct/st.total*100)+'%' : '—';
+    $('stStreak').textContent = st.streak;
+    $('stStreakWrap').classList.toggle('hot', st.streak >= 5);
+  }
+  function renderLog(){
+    $('logCount').textContent = st.mistakes.length;
+    $('log').hidden = st.mistakes.length === 0;
+    $('logList').innerHTML = st.mistakes.slice().reverse().map(m =>
+      '<li data-topic="'+esc(m.topic)+'"><div class="s">'+m.html+'</div><div class="yours">твой ответ: <s>'+esc(m.your)+'</s> · '+m.note+'</div></li>'
+    ).join('');
+  }
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+  /* ---- отрисовка задания ---- */
+  const sentence = $('sentence'), fb = $('fb'), primary = $('primary'), reveal = $('reveal');
+  let inputs = [];
+
+  function render(){
+    const it = st.item;
+    sentence.innerHTML = '';
+    inputs = [];
+    it.parts.forEach(p=>{
+      if(p.t === 'text'){ sentence.appendChild(document.createTextNode(p.v)); return; }
+      const w = Math.max(4, Math.min(30, p.w || p.a[0].length + 1));
+      const inp = document.createElement('input');
+      inp.type = 'text'; inp.className = 'blank';
+      inp.style.width = w + 'ch';
+      inp.autocomplete = 'off'; inp.autocapitalize = 'off'; inp.spellcheck = false;
+      inp.setAttribute('autocorrect','off');
+      inp.setAttribute('aria-label','пропуск');
+      sentence.appendChild(inp);
+      inputs.push({el: inp, b: p});
+      if(p.hint){
+        const h = document.createElement('span');
+        h.className = 'hint';
+        h.textContent = ' (' + p.hint + ')';
+        sentence.appendChild(h);
+      }
+    });
+    const bands = document.querySelector('.bands');
+    bands.classList.add('reset');                 /* сброс полос без проигрывания */
+    document.body.dataset.topic = it.topic;
+    delete document.body.dataset.verdict;
+    void bands.offsetWidth;
+    bands.classList.remove('reset');
+    $('subhint').hidden = !it.ph;
+    $('subhint').textContent = it.ph || '';
+    fb.innerHTML = '';
+    primary.textContent = 'Проверить';
+    reveal.hidden = false;
+    st.checked = false;
+    focusFirst();
+  }
+  function focusFirst(){ if(inputs[0]) inputs[0].el.focus(); }
+
+  function next(){
+    st.item = buildItem(cfg, st.recent);
+    st.recent.push(sig(st.item));
+    if(st.recent.length > 30) st.recent.shift();
+    render();
+  }
+
+  /* правильное предложение с подсвеченными ответами */
+  function answerHTML(it){
+    return it.parts.map(p => p.t === 'text' ? esc(p.v)
+      : (p.a[0] === '-' ? '' : '<span class="fill">' + esc(p.a[0]) + '</span>'))
+      .join('').replace(/\s+([.,!?])/g,'$1');
+  }
+
+  function check(force){
+    if(st.checked) return next();
+    const it = st.item;
+    if(!force){
+      const empty = inputs.find(x => !x.el.value.trim());
+      if(empty){
+        empty.el.classList.remove('empty'); void empty.el.offsetWidth; empty.el.classList.add('empty');
+        empty.el.focus();
+        return;
+      }
+    }
+    let ok = true, nearFix = '';
+    inputs.forEach(x=>{
+      const good = !force && isRight(x.el.value, x.b);
+      if(!good && !force && !nearFix && isNearMiss(x.el.value, x.b)) nearFix = x.b.a[0];
+      x.el.classList.add(good ? 'ok' : 'bad');
+      x.el.disabled = true;
+      if(!good) ok = false;
+    });
+
+    document.body.dataset.verdict = ok ? 'ok' : 'bad';
+    st.total++; st.checked = true;
+    if(ok){ st.correct++; st.streak++; } else { st.streak = 0; }
+    renderStats();
+
+    const tag = '<span class="tag">' + esc(it.tag) + '</span>';
+    const note = (nearFix ? '<b>Почти!</b> Форма верная, но написана неточно — нужно <b>'
+                            + esc(nearFix) + '</b> (апостроф и пробелы важны). ' : '') + it.note;
+    if(ok){
+      fb.innerHTML = '<div class="verdict"><span class="mark-v ok">Верно</span>'
+        + tag + '<p class="note">' + note + '</p></div>';
+    }else{
+      const html = answerHTML(it);
+      fb.innerHTML = '<div class="verdict"><span class="mark-v bad">Ошибка</span>'
+        + '<p class="answer">' + html + '</p>' + tag + '<p class="note">' + note + '</p></div>';
+      const your = inputs.map(x => x.el.value.trim() || '…').join(' / ');
+      st.mistakes.push({html: html, your: your, topic: it.topic, note: note.replace(/<[^>]+>/g,'')});
+      renderLog();
+    }
+    primary.textContent = 'Дальше';
+    reveal.hidden = true;
+    primary.focus();
+  }
+
+  primary.addEventListener('click', ()=> check(false));
+  reveal.addEventListener('click', ()=> check(true));
+
+  document.addEventListener('keydown', e=>{
+    if(e.key === 'Enter'){
+      if(e.ctrlKey || e.metaKey){ if(!st.checked) check(true); e.preventDefault(); return; }
+      if(e.target.tagName === 'BUTTON' && e.target !== primary) return;
+      e.preventDefault();
+      check(false);
+    }
+  });
+
+  renderStats(); renderLog(); next();
+}
+
+/* ==================================================================
+   7. Самопроверка движка: index.html#test
+   ================================================================== */
+function selfTest(){
+  const out = [];
+  const eq = (a,b,m) => { if(a!==b) out.push('FAIL '+m+': "'+a+'" ≠ "'+b+'"'); };
+  eq(thirdPerson('go'),'goes','go'); eq(thirdPerson('do'),'does','do');
+  eq(thirdPerson('study'),'studies','study'); eq(thirdPerson('play'),'plays','play');
+  eq(thirdPerson('watch'),'watches','watch'); eq(thirdPerson('fix'),'fixes','fix');
+  eq(thirdPerson('miss'),'misses','miss'); eq(thirdPerson('carry'),'carries','carry');
+  eq(thirdPerson('enjoy'),'enjoys','enjoy'); eq(thirdPerson('teach'),'teaches','teach');
+  eq(pastRegular('stop',1),'stopped','stop'); eq(pastRegular('study'),'studied','study');
+  eq(pastRegular('enjoy'),'enjoyed','enjoy'); eq(pastRegular('like'),'liked','like');
+  eq(pastRegular('travel',1),'travelled','travel'); eq(pastRegular('watch'),'watched','watch');
+  eq(pastRegular('cry'),'cried','cry'); eq(pastRegular('plan',1),'planned','plan');
+  eq(ingForm('make'),'making','make'); eq(ingForm('see'),'seeing','see');
+  eq(ingForm('sit',1),'sitting','sit'); eq(ingForm('study'),'studying','study');
+  eq(ingForm('dance'),'dancing','dance'); eq(ingForm('begin',1),'beginning','begin');
+  eq(ingForm('play'),'playing','play'); eq(ingForm('travel',1),'travelling','travel');
+  eq(ingForm('forget',1),'forgetting','forget'); eq(ingForm('carry'),'carrying','carry');
+  eq(ingForm('write'),'writing','write'); eq(ingForm('lose'),'losing','lose');
+  eq(affAnswers(['is','going']).join('|'),"is going|'s going",'affAnswers');
+  eq(negAnswers(['has','gone']).join('|'),"hasn't gone|has not gone|'s not gone",'negAnswers');
+  eq(negAnswers(['am','going']).join('|'),"'m not going|am not going",'negAnswers am');
+  VERBS.forEach(v=>{
+    if(v.pp && v.pp === (v.p || pastRegular(v.b, v.dbl))) out.push('лишнее pp у '+v.b);
+    if(!v.p && v.pp) out.push('pp у правильного глагола '+v.b);
+    if(v.noCont && v.dur) out.push('противоречие noCont+dur: '+v.b);
+  });
+  const cfg = {topics:['verb','article','pronoun'], tenses:TENSES_ALL.slice(), forms:['aff','neg','q']};
+  for(let i=0;i<8000;i++){
+    const it = buildItem(cfg, []);
+    const txt = it.parts.map(p=>p.t==='text'?p.v:'□').join('');
+    if(/[#~%]/.test(txt)) out.push('FAIL шаблон не раскрыт: '+txt);
+    if(/\s\s|\s[.,!?]/.test(txt)) out.push('FAIL пробелы: "'+txt+'"');
+    if(!it.parts.some(p=>p.t==='blank')) out.push('FAIL нет пропуска: '+txt);
+    it.parts.forEach(p=>{ if(p.t==='blank' && (!p.a.length || !p.a[0])) out.push('FAIL пустой ответ: '+txt); });
+    if(!it.note) out.push('FAIL нет пояснения: '+txt);
+  }
+  ART.forEach((s,i)=>{
+    if(s.split('|').length!==2) out.push('FAIL артикль без пояснения #'+i);
+    if((s.split('~').length-1)%2) out.push('FAIL непарный ~ #'+i);
+    const it = makeArticleItem(i);
+    if(!it.parts.some(p=>p.t==='blank')) out.push('FAIL артикль без пропуска #'+i);
+  });
+  return out;
+}
+
+if(typeof document !== 'undefined'){
+  boot();
+  if(location.hash === '#test'){
+    const r = selfTest();
+    console.log(r.length ? r : 'Все проверки пройдены');
+    alert(r.length ? r.slice(0,10).join('\n') : 'Все проверки пройдены');
+  }
+}
+</script>
+</body>
+</html>
