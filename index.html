@@ -254,6 +254,8 @@ main{
 .mark-v.ok{background:var(--ok)}
 .mark-v.bad{background:var(--bad)}
 .mark-v.try{background:var(--article)}
+/* маркер, на который просят посмотреть: жёлтый — это внимание, а не наказание */
+.mk{background:var(--article); color:var(--on-color); padding:0 .1em}
 .mark-v.gh{background:var(--surface-2); color:var(--muted)}
 .answer{margin:0; font-size:var(--t6); line-height:var(--lh-body); color:var(--ink); font-weight:400}
 .answer .fill{font-weight:700; color:var(--ok-ink); box-shadow:inset 0 -.42em 0 -.06em color-mix(in srgb, var(--ok) 28%, transparent)}
@@ -785,6 +787,40 @@ function formNote(v, tense, agr){
   return '';
 }
 
+/* ================== разбор написанного ==================
+   Движок умеет собрать все 36 клеток «время × форма» для того же глагола
+   и того же лица, поэтому может узнать, какую форму человек написал на
+   самом деле. Говорим при этом маркерами, а не метками времён: до конца
+   попыток метка «Past Simple» появляться не должна. */
+function diagnoseVerb(input, dx){
+  const a = normAns(input);
+  if(!a) return [];
+  const mk = dx.be ? (t,agr) => bePhraseFor(t,agr) : (t,agr) => phraseFor(dx.v,t,agr);
+  const hits = [];
+  TENSES_ALL.forEach(t=>{
+    const p = mk(t, dx.agr);
+    if(!p) return;
+    if(affAnswers(p.aff).some(x => normAns(x) === a)) hits.push({tense:t, form:'aff'});
+    const neg = p.doAux ? negAnswers([p.doAux].concat(p.base)) : negAnswers(p.aff);
+    if(neg.some(x => normAns(x) === a)) hits.push({tense:t, form:'neg'});
+  });
+  return hits;
+}
+/* примеры маркеров того времени, которое человек написал по ошибке */
+function markerHints(dx, t){
+  const list = dx.be ? (MARK_BE[t] || [])
+             : (dx.v && dx.v.st && MARK_ST[t]) ? MARK_ST[t] : (MARK[t] || []);
+  return list.slice(0, 2);
+}
+const PK_HINT = {s:'личную форму — она отвечает на «кто?»',
+                 p:'притяжательную форму — она отвечает на «чей?»',
+                 o:'объектную форму — она отвечает на «кого / кому?»'};
+function diagnosePron(input, dx){
+  const a = normAns(input), hits = [];
+  ['s','p','o'].forEach(k=>{ if(normAns(dx.pr[k]) === a) hits.push(k); });
+  return hits;
+}
+
 /* ================== сборка задания ================== */
 const T = s => ({t:'text', v:s});
 const B = (ans,hint) => ({t:'blank', a:ans, hint:hint||''});
@@ -824,6 +860,8 @@ function makeVerbItem(cfg){
      по ним считается освоенность, по подписи считать нельзя */
   const label = TENSE_RU[tense];
   const sk = ['v:' + tense + ':' + form, 'm:' + (be ? 'be' : v.b)];
+  /* dx — всё, что нужно, чтобы потом узнать написанную форму; marker — куда смотреть */
+  const dx = {kind:'verb', be:be, v:v, agr:s.a, tense:tense, form:form};
   const hintWord = be ? 'be' : v.b;
 
   const mk = be ? (t,agr) => bePhraseFor(t,agr) : (t,agr) => phraseFor(v,t,agr);
@@ -832,7 +870,7 @@ function makeVerbItem(cfg){
 
   /* --- утверждение --- */
   if(form === 'aff'){
-    return {topic:'verb', tag, label, sk,
+    return {topic:'verb', tag, label, sk, dx, marker:mark,
       parts:[T(s.t + ' '), B(affAnswers(p.aff).concat(v && v.altIng && isCont(tense) ? [p.aff.slice(0,-1).concat(v.altIng[0]).join(' ')] : [])
                              .concat(v && v.alt && tense === 'past' ? v.alt : []), hintWord),
              T(tail + '.')],
@@ -850,7 +888,7 @@ function makeVerbItem(cfg){
         + CONTR_NEG[p.doAux] + ' ' + v.b + '</b>.'
       : 'Отрицание в ' + TENSE_RU[tense] + ': <b>not</b> ставится после первого вспомогательного глагола — <b>'
         + negAnswers(p.aff)[0] + '</b>. Никаких do / does / did: вспомогательный уже есть.';
-    return {topic:'verb', tag, label, sk,
+    return {topic:'verb', tag, label, sk, dx, marker:mark,
       parts:[T(s.t + ' '), B(negAnswers(words), 'not / ' + hintWord), T(tail + '.')],
       note};
   }
@@ -858,7 +896,7 @@ function makeVerbItem(cfg){
   /* --- вопрос --- */
   if(p.doAux){
     const aux = cap(p.doAux);
-    return {topic:'verb', tag, label, sk,
+    return {topic:'verb', tag, label, sk, dx, marker:mark,
       parts:[B([aux], ''), T(' ' + s.l + ' '), B([v.b], hintWord), T(tail + '?')],
       note:'Вопрос в ' + TENSE_RU[tense] + ': <b>' + aux + ' + подлежащее + начальная форма</b>. '
            + (p.aff[0] === v.b
@@ -870,10 +908,10 @@ function makeVerbItem(cfg){
   const qNote = 'Вопрос в ' + TENSE_RU[tense] + ': первый вспомогательный глагол выходит перед подлежащим — <b>'
               + aux + ' ' + s.l + (rest ? ' ' + rest : '') + ' …?</b>' + (be && !rest ? ' Никаких do / does / did.' : '');
   if(!rest){
-    return {topic:'verb', tag, label, sk,
+    return {topic:'verb', tag, label, sk, dx, marker:mark,
       parts:[B([aux], hintWord), T(' ' + s.l + tail + '?')], note:qNote};
   }
-  return {topic:'verb', tag, label, sk,
+  return {topic:'verb', tag, label, sk, dx, marker:mark,
     parts:[B([aux], ''), T(' ' + s.l + ' '), B([rest], hintWord), T(tail + '?')], note:qNote};
 }
 
@@ -956,6 +994,7 @@ function makePronounItem(){
   if(ans==='his')  note += ' <b>his</b> — и «его» перед существительным, и «его» отдельно.';
 
   return {topic:'pronoun', tag:'Местоимения · '+PK_RU[tpl.k], label:'Местоимения', sk:['p:'+tpl.k],
+    dx:{kind:'pron', k:tpl.k, pr:pr},
     parts:[T(before), B([shown], pr.s), T(after)], note};
 }
 
@@ -1336,6 +1375,60 @@ function boot(){
       .join('').replace(/\s+([.,!?])/g,'$1');
   }
 
+  /* ---- подсветить маркер: показать, куда смотреть, не называя время ---- */
+  function markMarker(mark){
+    if(!mark) return;
+    const nodes = Array.prototype.filter.call(sentence.childNodes, n => n.nodeType === 3);
+    for(let i = 0; i < nodes.length; i++){
+      const at = nodes[i].nodeValue.indexOf(mark);
+      if(at < 0) continue;                       /* уже подсвечен — второй раз не оборачиваем */
+      const tail = nodes[i].splitText(at);
+      tail.splitText(mark.length);
+      const box = document.createElement('span');
+      box.className = 'mk';
+      box.textContent = mark;
+      tail.parentNode.replaceChild(box, tail);
+      return;
+    }
+  }
+
+  /* ---- лестница подсказок вместо «подумай ещё раз» ----
+     Ступень 1 — куда смотреть. Ступень 2 — что за форму человек написал,
+     названная маркерами: метка времени до конца попыток не появляется. */
+  function ladder(it, wrong, attempt){
+    const dx = it.dx;
+    if(!dx) return 'Подумай ещё раз. ';
+    const typed = wrong[0] ? wrong[0].el.value : '';
+
+    if(dx.kind === 'pron'){
+      const hits = diagnosePron(typed, dx);
+      if(hits.length === 1 && hits[0] !== dx.k)
+        return 'Ты написал ' + PK_HINT[hits[0]] + '. Здесь нужна другая. ';
+      return 'Спроси себя, на какой вопрос отвечает пропуск: «кто?», «чей?» или «кого / кому?». ';
+    }
+
+    if(attempt === 1){
+      markMarker(it.marker);
+      return 'Время задаёт <b>' + esc(it.marker) + '</b> — посмотри на него ещё раз. ';
+    }
+    const hits = diagnoseVerb(typed, dx);
+    if(hits.length === 1){
+      if(hits[0].tense !== dx.tense){
+        const ex = markerHints(dx, hits[0].tense);
+        if(ex.length){
+          markMarker(it.marker);
+          return 'Так пишут с <b>' + esc(ex[0]) + '</b>'
+               + (ex[1] ? ' или <b>' + esc(ex[1]) + '</b>' : '')
+               + ', а здесь маркер — <b>' + esc(it.marker) + '</b>. ';
+        }
+      }else if(hits[0].form !== dx.form){
+        return 'Время верное, а форма — нет: здесь ' + FORM_RU[dx.form] + '. ';
+      }
+    }
+    markMarker(it.marker);
+    return 'Ещё раз: время задаёт <b>' + esc(it.marker) + '</b>. ';
+  }
+
   /* ---- итог задания: считаем один раз, засчитываем только первую попытку ---- */
   function settle(it, firstTry){
     st.total++;
@@ -1387,7 +1480,7 @@ function boot(){
       wrong.forEach(x=>{ x.el.classList.remove('ok'); x.el.classList.add('retry'); });
       inputs.forEach(x=>{ if(x.el.classList.contains('ok')) x.el.disabled = true; });
       fb.innerHTML = '<div class="verdict"><span class="mark-v try">Не то</span>'
-        + '<p class="note">' + (nearHint || 'Подумай ещё раз. ')
+        + '<p class="note">' + (nearHint || ladder(it, wrong, st.attempt))
         + (left === 1 ? 'Осталась одна попытка' : 'Осталось ' + left + ' попытки') + '.</p></div>';
       const first = wrong[0];
       first.el.focus(); first.el.select();
@@ -1529,6 +1622,45 @@ function selfTest(){
   VERBS.forEach(v => collect(v, TENSES_ALL, false, v.b));
   collect({}, BE_TENSES, true, 'be');
   Object.keys(ambig).forEach(k => out.push('FAIL маркер не однозначен: ' + k));
+
+  /* --- разбор обязан узнавать форму, которую написал ученик --- */
+  VERBS.slice(0, 20).forEach(v=>{
+    ['i','3','pl'].forEach(agr=>{
+      TENSES_ALL.forEach(t=>{
+        const p = phraseFor(v, t, agr);
+        if(!p) return;
+        const dx = {kind:'verb', be:false, v:v, agr:agr, tense:t, form:'aff'};
+        [['aff', affAnswers(p.aff)],
+         ['neg', p.doAux ? negAnswers([p.doAux].concat(p.base)) : negAnswers(p.aff)]].forEach(pair=>{
+          pair[1].forEach(ans=>{
+            if(!diagnoseVerb(ans, dx).some(h => h.tense === t && h.form === pair[0]))
+              out.push('FAIL разбор не узнал свою же форму: ' + v.b + ' ' + t + '/' + pair[0] + ' → "' + ans + '"');
+          });
+        });
+      });
+    });
+  });
+  BE_TENSES.forEach(t=>{
+    ['i','3','pl'].forEach(agr=>{
+      const p = bePhraseFor(t, agr);
+      const dx = {kind:'verb', be:true, v:null, agr:agr, tense:t, form:'aff'};
+      affAnswers(p.aff).forEach(ans=>{
+        if(!diagnoseVerb(ans, dx).some(h => h.tense === t && h.form === 'aff'))
+          out.push('FAIL разбор не узнал форму be: ' + t + ' → "' + ans + '"');
+      });
+    });
+  });
+  if(diagnoseVerb('zzz', {kind:'verb', be:false, v:VERBS[0], agr:'3'}).length) out.push('FAIL разбор узнал мусор');
+  if(diagnoseVerb('',    {kind:'verb', be:false, v:VERBS[0], agr:'3'}).length) out.push('FAIL разбор узнал пустое');
+  PRON.forEach(pr=>{
+    ['s','p','o'].forEach(k=>{
+      if(diagnosePron(pr[k], {pr:pr}).indexOf(k) < 0) out.push('FAIL разбор не узнал местоимение ' + pr[k]);
+    });
+  });
+  /* маркеры-примеры для ошибочного времени обязаны существовать */
+  TENSES_ALL.forEach(t=>{
+    if(!markerHints({be:false, v:VERBS[0]}, t).length) out.push('FAIL нет маркеров-примеров для ' + t);
+  });
 
   const cfg = {topics:['verb','article','pronoun'], tenses:TENSES_ALL.slice(), forms:['aff','neg','q']};
   for(let i=0;i<8000;i++){
