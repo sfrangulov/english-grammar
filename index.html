@@ -8,7 +8,7 @@
 <script>
 /* тема до первой отрисовки, чтобы не моргало светлым */
 (function(){ var t='dark';
-  try{ var s=JSON.parse(localStorage.getItem('en2-trainer-v1')||'null'); if(s&&s.theme) t=s.theme; }catch(e){}
+  try{ var s=JSON.parse(localStorage.getItem('en2-trainer-v3')||'null'); if(s&&s.theme) t=s.theme; }catch(e){}   /* тот же ключ, что KEY в boot() */
   if(t!=='auto') document.documentElement.setAttribute('data-theme',t);
 })();
 </script>
@@ -127,7 +127,7 @@ svg{display:block}
 .mark i:nth-child(1){background:var(--verb)}
 .mark i:nth-child(2){background:var(--article)}
 .mark i:nth-child(3){background:var(--pronoun)}
-.brand span{
+.brand-name{
   font-size:var(--t2); font-weight:600; letter-spacing:.08em; text-transform:uppercase;
 }
 .spacer{flex:1}
@@ -223,8 +223,16 @@ main{
   font:inherit; font-weight:600; color:var(--topic-ink);
   background:transparent; border:0; border-bottom:3px solid var(--topic);
   padding:0 .14em 2px; margin:0 .08em; text-align:center;
-  caret-color:var(--topic); min-width:3ch; line-height:1.2; vertical-align:baseline;
+  caret-color:var(--topic); line-height:1.2; vertical-align:baseline;
+  /* правило 5: ширина одинакова у всех пропусков и не зависит от ответа.
+     Без field-sizing — единые 15ch, чтобы влезала самая длинная форма. */
+  width:15ch; min-width:15ch;
   transition:background var(--dur1) var(--ease), color var(--dur1) var(--ease), border-color var(--dur1) var(--ease);
+}
+/* где есть field-sizing — стартовая ширина одна и сидит на шкале отступов,
+   а растёт поле только от того, что печатает человек */
+@supports (field-sizing:content){
+  .blank{field-sizing:content; width:auto; min-width:var(--s9); max-width:100%}
 }
 .blank:hover:not(:disabled){background:var(--surface-2)}
 .blank:focus{outline:none; background:var(--surface-2)}
@@ -237,7 +245,7 @@ main{
 .blank.empty{animation:nudge var(--dur3) var(--ease); border-bottom-color:var(--bad)}
 
 /* ============================== разбор ============================== */
-.fb:not(:empty){margin-top:var(--s5)}
+.fb:not(:empty){margin-top:var(--s6)}
 .verdict{display:grid; gap:var(--s3); justify-items:start; animation:enter var(--dur1) var(--ease) both}
 .mark-v{
   display:inline-block; padding:var(--s1) var(--s3); font-size:var(--t1); font-weight:700;
@@ -249,6 +257,8 @@ main{
 .mark-v.gh{background:var(--surface-2); color:var(--muted)}
 .answer{margin:0; font-size:var(--t6); line-height:var(--lh-body); color:var(--ink); font-weight:400}
 .answer .fill{font-weight:700; color:var(--ok-ink); box-shadow:inset 0 -.42em 0 -.06em color-mix(in srgb, var(--ok) 28%, transparent)}
+/* нулевой артикль — не пустое место, а знак: иначе 30 пропусков из 98 в разборе не видны */
+.fill.zero{display:inline-block; width:20px; height:3px; vertical-align:.34em; background:var(--ok-ink); box-shadow:none}
 .tag{
   display:inline-block; padding:var(--s1) var(--s3); background:var(--article); color:var(--on-color);
   font-size:var(--t1); font-weight:700; letter-spacing:.1em; text-transform:uppercase;
@@ -310,7 +320,7 @@ main{
 .log .yours s{color:var(--bad-ink); text-decoration-thickness:2px}
 
 /* ============================== адаптация ============================== */
-@media (max-width:900px){ .brand span{display:none} }
+@media (max-width:900px){ .brand-name{display:none} }
 @media (max-width:720px){
   :root{ --gutter:max(var(--s4), env(safe-area-inset-left)); --band:8px; --band-2:5px; --item-reserve:154px }   /* самое длинное предложение на узком экране */
   .sentence{font-size:var(--t7); line-height:1.75}
@@ -331,7 +341,7 @@ main{
 <header class="bar">
   <span class="brand">
     <span class="mark" aria-hidden="true"><i></i><i></i><i></i></span>
-    <span>Тренажёр английской грамматики</span>
+    <span class="brand-name">Тренажёр английской грамматики</span>
   </span>
   <span class="spacer"></span>
   <div class="stats" aria-live="off">
@@ -413,8 +423,8 @@ main{
       <button class="btn" id="primary">Проверить</button>
       <button class="btn ghost" id="reveal">Не знаю</button>
     </div>
+    <div class="fb" id="fb" aria-live="polite" aria-atomic="true"></div>
     <p class="keys"><kbd>Enter</kbd> проверить, затем дальше &nbsp;·&nbsp; <kbd>Tab</kbd> следующий пропуск &nbsp;·&nbsp; <kbd>Ctrl</kbd>+<kbd>Enter</kbd> показать ответ</p>
-    <div class="fb" id="fb" aria-live="polite"></div>
    </div>
    <section class="result" id="result" hidden aria-live="polite"></section>
   </div>
@@ -744,21 +754,6 @@ function bePhraseFor(tense, agr){
 }
 const BE_TENSES = ['pres','past','fut','presP','pastP','futP'];
 
-/* ширина пропуска считается по всем трём лицам — она не должна выдавать форму */
-function widthFor(mk, tense, form){
-  let w = 0;
-  ['i','3','pl'].forEach(agr=>{
-    const p = mk(tense, agr);
-    if(!p) return;
-    const list = form === 'aff' ? affAnswers(p.aff)
-               : form === 'neg' ? (p.doAux ? negAnswers([p.doAux].concat(p.base)) : negAnswers(p.aff))
-               : (p.doAux ? p.base : p.aff.slice(1));
-    const first = Array.isArray(list[0]) ? list[0].join(' ') : list[0];   /* по краткой форме: длинную поле прокрутит */
-    if(first && first.length > w) w = first.length;
-  });
-  return w + 3;
-}
-
 /* ================== пояснение ================== */
 function formNote(v, tense, agr){
   const b = v.b;
@@ -792,7 +787,7 @@ function formNote(v, tense, agr){
 
 /* ================== сборка задания ================== */
 const T = s => ({t:'text', v:s});
-const B = (ans,hint,w) => ({t:'blank', a:ans, hint:hint||'', w:w||0});
+const B = (ans,hint) => ({t:'blank', a:ans, hint:hint||''});
 
 function markerFor(v, tense, be){
   if(be && MARK_BE[tense]) return pick(MARK_BE[tense]);
@@ -833,14 +828,13 @@ function makeVerbItem(cfg){
 
   const mk = be ? (t,agr) => bePhraseFor(t,agr) : (t,agr) => phraseFor(v,t,agr);
   const p  = mk(tense, s.a);
-  const w  = widthFor(mk, tense, form);
   const tail = (comp ? ' ' + comp : '') + ' ' + mark;
 
   /* --- утверждение --- */
   if(form === 'aff'){
     return {topic:'verb', tag, label, sk,
       parts:[T(s.t + ' '), B(affAnswers(p.aff).concat(v && v.altIng && isCont(tense) ? [p.aff.slice(0,-1).concat(v.altIng[0]).join(' ')] : [])
-                             .concat(v && v.alt && tense === 'past' ? v.alt : []), hintWord, w),
+                             .concat(v && v.alt && tense === 'past' ? v.alt : []), hintWord),
              T(tail + '.')],
       note: be
         ? TENSE_RU[tense] + ': ' + FORMULA_BE[tense] + '. Здесь — <b>' + p.aff.join(' ') + '</b>. ' + WHEN_RU[tense]
@@ -857,7 +851,7 @@ function makeVerbItem(cfg){
       : 'Отрицание в ' + TENSE_RU[tense] + ': <b>not</b> ставится после первого вспомогательного глагола — <b>'
         + negAnswers(p.aff)[0] + '</b>. Никаких do / does / did: вспомогательный уже есть.';
     return {topic:'verb', tag, label, sk,
-      parts:[T(s.t + ' '), B(negAnswers(words), 'not / ' + hintWord, w), T(tail + '.')],
+      parts:[T(s.t + ' '), B(negAnswers(words), 'not / ' + hintWord), T(tail + '.')],
       note};
   }
 
@@ -865,7 +859,7 @@ function makeVerbItem(cfg){
   if(p.doAux){
     const aux = cap(p.doAux);
     return {topic:'verb', tag, label, sk,
-      parts:[B([aux], '', 6), T(' ' + s.l + ' '), B([v.b], hintWord, w), T(tail + '?')],
+      parts:[B([aux], ''), T(' ' + s.l + ' '), B([v.b], hintWord), T(tail + '?')],
       note:'Вопрос в ' + TENSE_RU[tense] + ': <b>' + aux + ' + подлежащее + начальная форма</b>. '
            + (p.aff[0] === v.b
               ? 'С I / you / we / they — <b>Do</b>, с he / she / it — <b>Does</b>.'
@@ -877,10 +871,10 @@ function makeVerbItem(cfg){
               + aux + ' ' + s.l + (rest ? ' ' + rest : '') + ' …?</b>' + (be && !rest ? ' Никаких do / does / did.' : '');
   if(!rest){
     return {topic:'verb', tag, label, sk,
-      parts:[B([aux], hintWord, w + 3), T(' ' + s.l + tail + '?')], note:qNote};
+      parts:[B([aux], hintWord), T(' ' + s.l + tail + '?')], note:qNote};
   }
   return {topic:'verb', tag, label, sk,
-    parts:[B([aux], '', 6), T(' ' + s.l + ' '), B([rest], hintWord, w), T(tail + '?')], note:qNote};
+    parts:[B([aux], ''), T(' ' + s.l + ' '), B([rest], hintWord), T(tail + '?')], note:qNote};
 }
 
 /* ==================================================================
@@ -962,7 +956,7 @@ function makePronounItem(){
   if(ans==='his')  note += ' <b>his</b> — и «его» перед существительным, и «его» отдельно.';
 
   return {topic:'pronoun', tag:'Местоимения · '+PK_RU[tpl.k], label:'Местоимения', sk:['p:'+tpl.k],
-    parts:[T(before), B([shown], pr.s, 8), T(after)], note};
+    parts:[T(before), B([shown], pr.s), T(after)], note};
 }
 
 /* ==================================================================
@@ -1067,7 +1061,7 @@ function makeArticleItem(i){
   const parts = [];
   raw.split('~').forEach((chunk,k)=>{
     if(k%2===0){ if(chunk) parts.push(T(chunk)); }
-    else parts.push(B([chunk], '', 5));
+    else parts.push(B([chunk], ''));
   });
   return {topic:'article', tag:'Артикли', label:'Артикли', sk:['a:'+i], parts, note,
           ph:'Впиши a, an или the. Если артикль не нужен — поставь дефис «-».'};
@@ -1164,6 +1158,17 @@ function boot(){
 
   /* ---- настройки ---- */
   const panel = $('panel'), setBtn = $('setBtn');
+  /* Escape — первое, что нажимает взрослый; на 390×844 панель занимает почти весь экран */
+  function closePanel(toButton){
+    if(panel.hidden) return;
+    panel.hidden = true;
+    setBtn.setAttribute('aria-expanded', 'false');
+    if(toButton) setBtn.focus(); else focusFirst();
+  }
+  document.addEventListener('pointerdown', e=>{
+    if(panel.hidden || panel.contains(e.target) || setBtn.contains(e.target)) return;
+    closePanel();
+  });
   setBtn.addEventListener('click', ()=>{
     const open = panel.hidden;
     clearTimer();
@@ -1188,6 +1193,9 @@ function boot(){
     panel.querySelectorAll('.row[data-group="tenses"] .chip, .row[data-group="forms"] .chip')
       .forEach(c=>{ c.style.opacity = verbsOn ? '' : '.4'; c.disabled = !verbsOn; });
   }
+  /* настройка вступает в силу со следующего задания: три отвеченных задания
+     не должны пропадать от одного любопытного клика по чипу */
+  function applyCfg(){ syncChips(); save(); renderSteps(); renderStats(); }
   const OPTIONAL = ['behaviour'];   /* эту группу можно опустошать целиком */
   panel.querySelectorAll('.row[data-group] .chip').forEach(chip=>{
     chip.addEventListener('click', ()=>{
@@ -1198,14 +1206,13 @@ function boot(){
         }
         arr.splice(i,1);
       } else arr.push(k);
-      syncChips(); save();
-      if(g !== 'behaviour') startRound();
+      applyCfg();
     });
   });
   panel.querySelectorAll('.row[data-single] .chip').forEach(chip=>{
     chip.addEventListener('click', ()=>{
       cfg[chip.closest('.row').dataset.single] = Number(chip.dataset.key);
-      syncChips(); save(); startRound();
+      applyCfg();
     });
   });
   syncChips();
@@ -1282,15 +1289,19 @@ function boot(){
     const it = st.item;
     sentence.innerHTML = '';
     inputs = [];
+    const nBlanks = it.parts.filter(p => p.t === 'blank').length;
     it.parts.forEach(p=>{
       if(p.t === 'text'){ sentence.appendChild(document.createTextNode(p.v)); return; }
-      const w = Math.max(4, Math.min(30, p.w || p.a[0].length + 1));
       const inp = document.createElement('input');
       inp.type = 'text'; inp.className = 'blank';
-      inp.style.width = w + 'ch';
+      inp.lang = 'en'; inp.dir = 'ltr';                  /* поле английское, страница русская */
       inp.autocomplete = 'off'; inp.autocapitalize = 'off'; inp.spellcheck = false;
       inp.setAttribute('autocorrect','off');
-      inp.setAttribute('aria-label','пропуск');
+      inp.setAttribute('enterkeyhint','go');             /* на телефоне кнопка ввода, а не «ввод» */
+      inp.setAttribute('data-1p-ignore','');             /* менеджеры паролей рисуют свою иконку в пропуске */
+      inp.setAttribute('data-lpignore','true');
+      inp.setAttribute('data-form-type','other');
+      inp.setAttribute('aria-label', nBlanks > 1 ? 'пропуск ' + (inputs.length + 1) : 'пропуск');
       sentence.appendChild(inp);
       inputs.push({el: inp, b: p});
       if(p.hint){
@@ -1313,14 +1324,15 @@ function boot(){
     reveal.hidden = false;
     st.checked = false;
     renderSteps();
-    focusFirst();
+    if(panel.hidden) focusFirst();     /* иначе панель непроходима табом */
   }
   function focusFirst(){ if(inputs[0]) inputs[0].el.focus(); }
 
   /* правильное предложение с подсвеченными ответами */
   function answerHTML(it){
     return it.parts.map(p => p.t === 'text' ? esc(p.v)
-      : (p.a[0] === '-' ? '' : '<span class="fill">' + esc(p.a[0]) + '</span>'))
+      : (p.a[0] === '-' ? '<span class="fill zero" title="без артикля"></span>'
+                        : '<span class="fill">' + esc(p.a[0]) + '</span>'))
       .join('').replace(/\s+([.,!?])/g,'$1');
   }
 
@@ -1364,6 +1376,9 @@ function boot(){
               + '<span class="tag">' + esc(it.tag) + '</span>';
     const nearNote = nearFix ? '<b>Почти!</b> Форма верная, но написана неточно — нужно <b>'
                                + esc(nearFix) + '</b> (апостроф и пробелы важны). ' : '';
+    /* пока попытки не кончились, называем характер расхождения, но не саму форму:
+       иначе первая же опечатка выдаёт ответ и три попытки теряют смысл */
+    const nearHint = nearFix ? '<b>Почти!</b> Форма верная, ошибка только в записи — проверь апостроф и пробелы. ' : '';
 
     /* --- ещё есть попытки: ответ не показываем --- */
     if(!ok && !force && st.attempt < MAX_TRIES - 1){
@@ -1372,7 +1387,7 @@ function boot(){
       wrong.forEach(x=>{ x.el.classList.remove('ok'); x.el.classList.add('retry'); });
       inputs.forEach(x=>{ if(x.el.classList.contains('ok')) x.el.disabled = true; });
       fb.innerHTML = '<div class="verdict"><span class="mark-v try">Не то</span>'
-        + '<p class="note">' + (nearNote || 'Подумай ещё раз. ')
+        + '<p class="note">' + (nearHint || 'Подумай ещё раз. ')
         + (left === 1 ? 'Осталась одна попытка' : 'Осталось ' + left + ' попытки') + '.</p></div>';
       const first = wrong[0];
       first.el.focus(); first.el.select();
@@ -1442,6 +1457,7 @@ function boot(){
     clearTimer();
     st.round = {idx:0, marks:[], by:{}};
     drill.hidden = false; result.hidden = true;
+    renderStats();
     next();
   }
 
@@ -1449,10 +1465,12 @@ function boot(){
   reveal.addEventListener('click', ()=> check(true));
 
   document.addEventListener('keydown', e=>{
+    if(e.key === 'Escape' && !panel.hidden){ e.preventDefault(); closePanel(true); return; }
     if(e.key !== 'Enter') return;
     if(!result.hidden){ e.preventDefault(); startRound(); return; }
     if(e.ctrlKey || e.metaKey){ if(!st.checked) check(true); e.preventDefault(); return; }
-    if(e.target.tagName === 'BUTTON' && e.target !== primary) return;
+    const tn = e.target.tagName;   /* белый список: всё прочее (summary, чипы, ссылки) Enter не трогает */
+    if(tn !== 'INPUT' && tn !== 'BODY' && e.target !== primary) return;
     e.preventDefault();
     check(false);
   });
