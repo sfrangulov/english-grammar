@@ -489,17 +489,17 @@ const MARK = {
   presC :['now','at the moment','right now','today'],
   pastC :["at five o'clock yesterday",'all day yesterday','at that moment','all morning yesterday','when I came in'],
   futC  :["at five o'clock tomorrow",'this time tomorrow','all day tomorrow','at that moment tomorrow'],
-  presP :['this week','this month','this year','today','recently','twice this week','before','many times'],
-  pastP :["by five o'clock yesterday",'by that time','by the end of the week','before the guests came','by Monday'],
-  futP  :["by five o'clock tomorrow",'by next Monday','by the end of the year','by that time'],
+  presP :['this week','this month','this year','recently','twice this week','before','many times'],
+  pastP :["by five o'clock yesterday",'by that time','by the end of that week','before the guests came','by that Monday'],
+  futP  :["by five o'clock tomorrow",'by next Monday','by the end of next year','by that time tomorrow'],
   presPC:['for two hours','since morning','all day','since Monday','for a long time'],
-  pastPC:['for two hours before that','since morning','all day yesterday','for a long time'],
-  futPC :['for two hours by then','for ten years by next year','for a long time by that time']
+  pastPC:['for two hours before that','for a long time before that','since early that morning','all morning before the meeting'],
+  futPC :['for two hours by tomorrow evening','for ten years by next year','for a long time by next summer','for three days by next Monday']
 };
 /* глаголы состояния: с ними «every day» и «twice this week» звучат неестественно */
 const MARK_ST = {
   pres :['now','today','at the moment'],
-  presP:['for two years','since Monday','for a long time','since last year']
+  presP:['for two years','since last year','for ages','since childhood']
 };
 /* be */
 const MARK_BE = {
@@ -508,7 +508,7 @@ const MARK_BE = {
   fut  :['tomorrow','next week','in an hour','next Monday','tonight'],
   presP:['since morning','all day','for two hours','since Monday'],
   pastP:['by that time','before the trip',"by five o'clock yesterday"],
-  futP :['by next week','by that time','by tomorrow evening']
+  futP :['by next week','by that time tomorrow','by tomorrow evening']
 };
 
 /* --- глагол be --- */
@@ -825,6 +825,10 @@ function makeVerbItem(cfg){
   const comp = pick(pool.length ? pool : (be ? BE.c : v.c));
   const mark = markerFor(v || {}, tense, be);
   const tag  = TENSE_RU[tense] + ' · ' + FORM_RU[form];
+  /* label — для разбивки в итоге раунда, sk — машинные ключи правила:
+     по ним считается освоенность, по подписи считать нельзя */
+  const label = TENSE_RU[tense];
+  const sk = ['v:' + tense + ':' + form, 'm:' + (be ? 'be' : v.b)];
   const hintWord = be ? 'be' : v.b;
 
   const mk = be ? (t,agr) => bePhraseFor(t,agr) : (t,agr) => phraseFor(v,t,agr);
@@ -834,7 +838,7 @@ function makeVerbItem(cfg){
 
   /* --- утверждение --- */
   if(form === 'aff'){
-    return {topic:'verb', tag,
+    return {topic:'verb', tag, label, sk,
       parts:[T(s.t + ' '), B(affAnswers(p.aff).concat(v && v.altIng && isCont(tense) ? [p.aff.slice(0,-1).concat(v.altIng[0]).join(' ')] : [])
                              .concat(v && v.alt && tense === 'past' ? v.alt : []), hintWord, w),
              T(tail + '.')],
@@ -852,7 +856,7 @@ function makeVerbItem(cfg){
         + CONTR_NEG[p.doAux] + ' ' + v.b + '</b>.'
       : 'Отрицание в ' + TENSE_RU[tense] + ': <b>not</b> ставится после первого вспомогательного глагола — <b>'
         + negAnswers(p.aff)[0] + '</b>. Никаких do / does / did: вспомогательный уже есть.';
-    return {topic:'verb', tag,
+    return {topic:'verb', tag, label, sk,
       parts:[T(s.t + ' '), B(negAnswers(words), 'not / ' + hintWord, w), T(tail + '.')],
       note};
   }
@@ -860,7 +864,7 @@ function makeVerbItem(cfg){
   /* --- вопрос --- */
   if(p.doAux){
     const aux = cap(p.doAux);
-    return {topic:'verb', tag,
+    return {topic:'verb', tag, label, sk,
       parts:[B([aux], '', 6), T(' ' + s.l + ' '), B([v.b], hintWord, w), T(tail + '?')],
       note:'Вопрос в ' + TENSE_RU[tense] + ': <b>' + aux + ' + подлежащее + начальная форма</b>. '
            + (p.aff[0] === v.b
@@ -872,10 +876,10 @@ function makeVerbItem(cfg){
   const qNote = 'Вопрос в ' + TENSE_RU[tense] + ': первый вспомогательный глагол выходит перед подлежащим — <b>'
               + aux + ' ' + s.l + (rest ? ' ' + rest : '') + ' …?</b>' + (be && !rest ? ' Никаких do / does / did.' : '');
   if(!rest){
-    return {topic:'verb', tag,
+    return {topic:'verb', tag, label, sk,
       parts:[B([aux], hintWord, w + 3), T(' ' + s.l + tail + '?')], note:qNote};
   }
-  return {topic:'verb', tag,
+  return {topic:'verb', tag, label, sk,
     parts:[B([aux], '', 6), T(' ' + s.l + ' '), B([rest], hintWord, w), T(tail + '?')], note:qNote};
 }
 
@@ -957,7 +961,7 @@ function makePronounItem(){
   if(ans==='you')  note += ' У <b>you</b> личная и объектная формы одинаковы.';
   if(ans==='his')  note += ' <b>his</b> — и «его» перед существительным, и «его» отдельно.';
 
-  return {topic:'pronoun', tag:'Местоимения · '+PK_RU[tpl.k],
+  return {topic:'pronoun', tag:'Местоимения · '+PK_RU[tpl.k], label:'Местоимения', sk:['p:'+tpl.k],
     parts:[T(before), B([shown], pr.s, 8), T(after)], note};
 }
 
@@ -1065,7 +1069,7 @@ function makeArticleItem(i){
     if(k%2===0){ if(chunk) parts.push(T(chunk)); }
     else parts.push(B([chunk], '', 5));
   });
-  return {topic:'article', tag:'Артикли', parts, note,
+  return {topic:'article', tag:'Артикли', label:'Артикли', sk:['a:'+i], parts, note,
           ph:'Впиши a, an или the. Если артикль не нужен — поставь дефис «-».'};
 }
 
@@ -1137,8 +1141,10 @@ function boot(){
   try{ const s = JSON.parse(localStorage.getItem(KEY)||'null'); if(s) cfg = Object.assign(cfg, s); }catch(e){}
   const save = () => { try{ localStorage.setItem(KEY, JSON.stringify(cfg)); }catch(e){} };
 
+  /* seq — сквозной номер задания за всё занятие: он не обнуляется на границе раунда,
+     поэтому призрак, назначенный на конец раунда, доживает до следующего */
   const st = {total:0, correct:0, streak:0, item:null, checked:false, recent:[], mistakes:[],
-              round:{idx:0, marks:[], by:{}}, ghosts:[], attempt:0, timer:0};
+              round:{idx:0, marks:[], by:{}}, ghosts:[], attempt:0, timer:0, seq:0};
 
   /* ---- тема ---- */
   const SUN = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.2 5.2l1.4 1.4M17.4 17.4l1.4 1.4M18.8 5.2l-1.4 1.4M6.6 17.4l-1.4 1.4"/></svg>';
@@ -1204,7 +1210,7 @@ function boot(){
   });
   syncChips();
   $('resetBtn').addEventListener('click', ()=>{
-    st.total = st.correct = st.streak = 0; st.mistakes = []; st.recent = []; st.ghosts = [];
+    st.total = st.correct = st.streak = st.seq = 0; st.mistakes = []; st.recent = []; st.ghosts = [];
     renderLog(); startRound();
   });
 
@@ -1252,7 +1258,7 @@ function boot(){
 
   /* ---- следующее задание: сначала вернувшаяся ошибка, потом новое ---- */
   function nextItem(){
-    const due = st.ghosts.findIndex(g => g.due <= st.round.idx);
+    const due = st.ghosts.findIndex(g => g.due <= st.seq);
     if(due >= 0 && has('ghosts')){
       const g = st.ghosts.splice(due, 1)[0];
       g.item.ghost = true;
@@ -1321,14 +1327,15 @@ function boot(){
   /* ---- итог задания: считаем один раз, засчитываем только первую попытку ---- */
   function settle(it, firstTry){
     st.total++;
+    st.seq++;
     st.round.idx++;
     st.round.marks.push(firstTry ? 1 : 0);
     if(firstTry){ st.correct++; st.streak++; } else { st.streak = 0; }
-    const key = it.tag.split(' · ')[0];
+    const key = it.label;
     const s = st.round.by[key] || (st.round.by[key] = {n:0, ok:0});
     s.n++; if(firstTry) s.ok++;
     if(!firstTry && has('ghosts') && st.ghosts.length < 8){
-      st.ghosts.push({item: it, due: st.round.idx + 3 + rnd(4)});
+      st.ghosts.push({item: it, due: st.seq + 3 + rnd(4)});
     }
     renderStats(); renderSteps();
   }
@@ -1482,6 +1489,29 @@ function selfTest(){
     if(!v.p && v.pp) out.push('pp у правильного глагола '+v.b);
     if(v.noCont && v.dur) out.push('противоречие noCont+dur: '+v.b);
   });
+  /* --- маркер времени обязан называть ровно одно время --- */
+  /* какие времена вообще достижимы для этого глагола — точно по makeVerbItem */
+  const reachable = (v, t) => isPerfCont(t) ? !!v.dur
+                            : isCont(t)     ? (!v.noCont && !v.st)
+                            : (t === 'pastP' || t === 'futP') ? !v.noPerf
+                            : true;
+  const markerSet = (v, t, be) => be ? (MARK_BE[t] || [])
+                                     : (v.st && MARK_ST[t]) ? MARK_ST[t] : (MARK[t] || []);
+  const ambig = {};
+  const collect = (v, tenses, be, who) => {
+    const m2t = {};
+    tenses.forEach(t=>{
+      if(!be && !reachable(v, t)) return;
+      markerSet(v, t, be).forEach(m=>{ (m2t[m] || (m2t[m] = [])).push(t); });
+    });
+    Object.keys(m2t).forEach(m=>{
+      if(m2t[m].length > 1) ambig['«' + m + '» → ' + m2t[m].join(' / ') + '  (' + who + ')'] = 1;
+    });
+  };
+  VERBS.forEach(v => collect(v, TENSES_ALL, false, v.b));
+  collect({}, BE_TENSES, true, 'be');
+  Object.keys(ambig).forEach(k => out.push('FAIL маркер не однозначен: ' + k));
+
   const cfg = {topics:['verb','article','pronoun'], tenses:TENSES_ALL.slice(), forms:['aff','neg','q']};
   for(let i=0;i<8000;i++){
     const it = buildItem(cfg, []);
@@ -1491,12 +1521,16 @@ function selfTest(){
     if(!it.parts.some(p=>p.t==='blank')) out.push('FAIL нет пропуска: '+txt);
     it.parts.forEach(p=>{ if(p.t==='blank' && (!p.a.length || !p.a[0])) out.push('FAIL пустой ответ: '+txt); });
     if(!it.note) out.push('FAIL нет пояснения: '+txt);
+    if(!it.label) out.push('FAIL нет label: '+txt);
+    if(!it.sk || !it.sk.length || it.sk.some(k => !k || /undefined|null/.test(k)))
+      out.push('FAIL плохой sk: ' + JSON.stringify(it.sk) + ' — ' + txt);
   }
   ART.forEach((s,i)=>{
     if(s.split('|').length!==2) out.push('FAIL артикль без пояснения #'+i);
     if((s.split('~').length-1)%2) out.push('FAIL непарный ~ #'+i);
     const it = makeArticleItem(i);
     if(!it.parts.some(p=>p.t==='blank')) out.push('FAIL артикль без пропуска #'+i);
+    if(it.sk[0] !== 'a:'+i) out.push('FAIL sk артикля #'+i);
   });
   return out;
 }
