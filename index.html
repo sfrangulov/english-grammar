@@ -238,7 +238,7 @@ main{
 .blank.empty{animation:nudge var(--dur3) var(--ease); border-bottom-color:var(--bad)}
 
 /* ============================== разбор ============================== */
-.fb:not(:empty){margin-top:var(--s6)}
+.fb:not(:empty){margin-top:var(--s5)}
 .verdict{display:grid; gap:var(--s3); justify-items:start; animation:enter var(--dur1) var(--ease) both}
 .mark-v{
   display:inline-block; padding:var(--s1) var(--s3); font-size:var(--t1); font-weight:700;
@@ -387,8 +387,8 @@ main{
       <button class="btn" id="primary">Проверить</button>
       <button class="btn ghost" id="reveal">Не знаю</button>
     </div>
-    <div class="fb" id="fb" aria-live="polite"></div>
     <p class="keys"><kbd>Enter</kbd> проверить, затем дальше &nbsp;·&nbsp; <kbd>Tab</kbd> следующий пропуск &nbsp;·&nbsp; <kbd>Ctrl</kbd>+<kbd>Enter</kbd> показать ответ</p>
+    <div class="fb" id="fb" aria-live="polite"></div>
   </div>
 </main>
 
