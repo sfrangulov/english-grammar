@@ -402,6 +402,8 @@ main{
       <button class="chip" data-key="aff">Утверждение</button>
       <button class="chip" data-key="neg">Отрицание</button>
       <button class="chip" data-key="q">Вопрос</button>
+      <button class="chip" data-key="short">Краткий ответ</button>
+      <button class="chip" data-key="tag">Разделительный вопрос</button>
     </div>
     <div class="row" data-single="round">
       <span class="row-label">Раунд</span>
@@ -486,18 +488,31 @@ function rulePast(v,dbl){
 }
 
 /* --- подлежащие: a = i | 3 | pl --- */
+/* pr — местоимение, которым подлежащее заменяется в хвосте и кратком ответе.
+   У «My friend» и «The teacher» его нет: он или она — из текста не следует. */
 const SUBJ = [
-  {t:'I',l:'I',a:'i'},               {t:'You',l:'you',a:'pl'},
-  {t:'He',l:'he',a:'3'},             {t:'She',l:'she',a:'3'},
-  {t:'We',l:'we',a:'pl'},            {t:'They',l:'they',a:'pl'},
-  {t:'Tom',l:'Tom',a:'3'},           {t:'Anna',l:'Anna',a:'3'},
-  {t:'Mr Brown',l:'Mr Brown',a:'3'}, {t:'Kate and Tom',l:'Kate and Tom',a:'pl'},
-  {t:'My brother',l:'your brother',a:'3'},   {t:'My sister',l:'your sister',a:'3'},
-  {t:'My mother',l:'your mother',a:'3'},     {t:'My friend',l:'your friend',a:'3'},
-  {t:'My parents',l:'your parents',a:'pl'},  {t:'My friends',l:'your friends',a:'pl'},
-  {t:'The children',l:'the children',a:'pl'},{t:'The teacher',l:'the teacher',a:'3'},
-  {t:'The students',l:'the students',a:'pl'}
+  {t:'I',l:'I',a:'i',pr:'I'},              {t:'You',l:'you',a:'pl',pr:'you'},
+  {t:'He',l:'he',a:'3',pr:'he'},           {t:'She',l:'she',a:'3',pr:'she'},
+  {t:'We',l:'we',a:'pl',pr:'we'},          {t:'They',l:'they',a:'pl',pr:'they'},
+  {t:'Tom',l:'Tom',a:'3',pr:'he'},         {t:'Anna',l:'Anna',a:'3',pr:'she'},
+  {t:'Mr Brown',l:'Mr Brown',a:'3',pr:'he'},
+  {t:'Kate and Tom',l:'Kate and Tom',a:'pl',pr:'they'},
+  {t:'My brother',l:'your brother',a:'3',pr:'he'},
+  {t:'My sister',l:'your sister',a:'3',pr:'she'},
+  {t:'My mother',l:'your mother',a:'3',pr:'she'},
+  {t:'My friend',l:'your friend',a:'3'},
+  {t:'My parents',l:'your parents',a:'pl',pr:'they'},
+  {t:'My friends',l:'your friends',a:'pl',pr:'they'},
+  {t:'The children',l:'the children',a:'pl',pr:'they'},
+  {t:'The teacher',l:'the teacher',a:'3'},
+  {t:'The students',l:'the students',a:'pl',pr:'they'}
 ];
+/* Хвост: «I am late, aren't I?» — исключение, которое здесь только запутает,
+   поэтому первое лицо в хвосты не идёт.
+   Краткий ответ: на «Do you like…?» отвечают «Yes, I do», а не «yes, you do» —
+   смена лица к теме не относится, поэтому I и You исключены и там. */
+const SUBJ_TAG = SUBJ.filter(x => x.pr && x.pr !== 'I');
+const SUBJ_SA  = SUBJ.filter(x => x.pr && x.pr !== 'I' && x.pr !== 'you');
 
 /* --- маркеры времени: подсказывают время, других подсказок нет --- */
 const MARK = {
@@ -645,7 +660,8 @@ const TENSE_RU = {
   presP:'Present Perfect', pastP:'Past Perfect', futP:'Future Perfect',
   presPC:'Present Perfect Continuous', pastPC:'Past Perfect Continuous', futPC:'Future Perfect Continuous'
 };
-const FORM_RU = {aff:'утверждение', neg:'отрицание', q:'вопрос'};
+const FORM_RU = {aff:'утверждение', neg:'отрицание', q:'вопрос',
+                 short:'краткий ответ', tag:'разделительный вопрос'};
 const FORMULA = {
   pres  :'глагол в начальной форме, с he / she / it — окончание <b>-s</b>',
   past  :'вторая форма глагола',
@@ -889,7 +905,7 @@ function makeVerbItem(cfg){
     v = pick(VERBS);
   }
 
-  const s = pick(SUBJ);
+  const s = pick(form === 'tag' ? SUBJ_TAG : form === 'short' ? SUBJ_SA : SUBJ);
   let pool = be ? BE.c : v.c;
   if(form !== 'aff') pool = pool.filter(x => !/\bnothing\b/.test(x));   /* без двойного отрицания */
   if(tense !== 'pres' && tense !== 'past' && tense !== 'fut')             /* «work at nine» спорит с маркером */
@@ -936,6 +952,40 @@ function makeVerbItem(cfg){
     return {topic:'verb', tag, label, sk, dx, marker:mark,
       parts:[T(s.t + ' '), B(negAnswers(words), 'not / ' + hintWord), T(tail + '.')],
       note};
+  }
+
+  /* --- краткий ответ: «Does Tom play football? — Yes, he does.» ---
+     Ошибка новичка — «Yes, he plays»: в кратком ответе стоит вспомогательный,
+     а не смысловой глагол. Он же виден в самом вопросе, и это нормально:
+     задание не про то, чтобы его вывести, а про то, чтобы не заменить. */
+  if(form === 'short'){
+    const aux = p.doAux || p.aff[0];
+    const q   = p.doAux ? cap(p.doAux) + ' ' + s.l + ' ' + v.b + tail + '?'
+                        : cap(p.aff[0]) + ' ' + s.l + (p.aff.length > 1 ? ' ' + p.aff.slice(1).join(' ') : '') + tail + '?';
+    const yes = Math.random() < 0.5;
+    return {topic:'verb', tag, label, sk, dx, marker:mark,
+      parts:[T(q + ' — ' + (yes ? 'Yes, ' : 'No, ') + s.pr + ' '),
+             B(yes ? [aux] : negAnswers([aux]), ''), T('.')],
+      note:'Краткий ответ повторяет <b>вспомогательный</b> глагол вопроса, а не смысловой: '
+           + '<b>' + (yes ? 'Yes, ' + s.pr + ' ' + aux : 'No, ' + s.pr + ' ' + negAnswers([aux])[0]) + '</b>. '
+           + 'Не «' + s.pr + ' ' + p.aff.join(' ') + '», не «' + s.pr + ' ' + (v ? v.b : 'be') + '».'};
+  }
+
+  /* --- разделительный вопрос: «Tom plays football, doesn't he?» ---
+     Утверждение берёт отрицательный хвост, отрицание — утвердительный. */
+  if(form === 'tag'){
+    const aux = p.doAux || p.aff[0];
+    const positive = Math.random() < 0.5;
+    const stem = positive
+      ? s.t + ' ' + p.aff.join(' ')
+      : s.t + ' ' + negAnswers(p.doAux ? [p.doAux].concat(p.base) : p.aff)[0];
+    return {topic:'verb', tag, label, sk, dx, marker:mark,
+      parts:[T(stem + tail + ', '), B([positive ? CONTR_NEG[aux] : aux], ''), T(' ' + s.pr + '?')],
+      note:'Хвост берёт вспомогательный глагол утверждения и переворачивает знак: '
+           + (positive
+              ? 'утверждение — отрицательный хвост, <b>' + CONTR_NEG[aux] + ' ' + s.pr + '?</b>'
+              : 'отрицание — утвердительный хвост, <b>' + aux + ' ' + s.pr + '?</b>')
+           + '. Подлежащее в хвосте всегда местоимение: <b>' + s.pr + '</b>.'};
   }
 
   /* --- вопрос --- */
@@ -1704,6 +1754,16 @@ function boot(){
       return 'Спроси себя, на какой вопрос отвечает пропуск: «кто?», «чей?» или «кого / кому?». ';
     }
 
+    /* у краткого ответа и хвоста дело не во времени — маркер тут не поможет */
+    if(dx.form === 'short' || dx.form === 'tag'){
+      if(attempt === 1)
+        return dx.form === 'short'
+          ? 'В кратком ответе стоит вспомогательный глагол — тот, с которого начинается вопрос. '
+          : 'Хвост берёт вспомогательный глагол утверждения и переворачивает знак. ';
+      return dx.form === 'short'
+        ? 'Смысловой глагол в краткий ответ не идёт: <b>Yes, he does</b>, а не <b>Yes, he plays</b>. '
+        : 'Утверждение — отрицательный хвост, отрицание — утвердительный. ';
+    }
     if(attempt === 1){
       markMarker(it.marker);
       return 'Время задаёт <b>' + esc(it.marker) + '</b> — посмотри на него ещё раз. ';
@@ -2067,7 +2127,8 @@ function selfTest(){
     });
   });
 
-  const cfg = {topics:['verb','article','pronoun'], tenses:TENSES_ALL.slice(), forms:['aff','neg','q']};
+  const cfg = {topics:['verb','article','pronoun'], tenses:TENSES_ALL.slice(),
+               forms:['aff','neg','q','short','tag']};
   for(let i=0;i<8000;i++){
     const it = buildItem(cfg, []);
     const txt = it.parts.map(p=>p.t==='text'?p.v:'□').join('');
