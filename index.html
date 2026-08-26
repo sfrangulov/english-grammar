@@ -1121,8 +1121,13 @@ const A_PROF = [{w:'teacher'},{w:'doctor'},{w:'driver'},{w:'nurse'},{w:'writer'}
                 {w:'dentist'},{w:'pilot'},{w:'engineer',an:1},{w:'artist',an:1},{w:'actor',an:1},
                 {w:'architect',an:1},{w:'officer',an:1},{w:'economist',an:1}];
 const A_THING = [{w:'cat'},{w:'dog'},{w:'bird'},{w:'car'},{w:'bike'},{w:'book'},{w:'flower'},
-                 {w:'box'},{w:'apple',an:1},{w:'orange',an:1},{w:'egg',an:1},{w:'umbrella',an:1}];
-const A_UNIQUE = ['sun','moon','sky'];
+                 {w:'box'},{w:'house'},{w:'tree'},{w:'horse'},{w:'ship'},{w:'plane'},{w:'hat'},
+                 {w:'apple',an:1},{w:'orange',an:1},{w:'egg',an:1},{w:'umbrella',an:1},
+                 {w:'island',an:1},{w:'animal',an:1},{w:'elephant',an:1},{w:'insect',an:1}];
+const F_MENTION = ['Yesterday I saw ~A~ #. ~The~ # was very big.',
+                   'There is ~A~ # in the picture. ~The~ # is very small.'];
+const A_UNIQUE = ['sun','moon','sky','sea','ground'];
+const F_UNIQUE = ['Look at ~the~ #!', 'I could not see ~the~ # from the window.'];
 const A_TRANSPORT = ['bus','car','train','plane','bike','taxi','boat'];
 const A_MEAL = ['breakfast','lunch','dinner','supper'];
 const MEAL_TIME = {breakfast:['seven','eight','half past seven'], lunch:['one','two','half past twelve'],
@@ -1130,18 +1135,34 @@ const MEAL_TIME = {breakfast:['seven','eight','half past seven'], lunch:['one','
 const A_INSTR = ['piano','guitar','violin','flute'];
 const A_SPORT = ['football','tennis','basketball','volleyball','hockey','chess'];
 const A_LANG = ['English','French','German','Spanish','Italian','Chinese'];
-const A_MASS = ['music','coffee','tea','milk','bread','cheese','snow','rain'];
-const A_PLURAL = ['cats','dogs','birds','flowers','apples','books'];
-const A_WATER = ['Thames','Volga','Nile','Black Sea','Pacific Ocean','Atlantic Ocean'];
+const A_MASS = ['music','coffee','tea','milk','bread','cheese','snow','rain',
+                'rice','soup','chocolate','fish','meat','fruit','honey'];
+const F_MASS = ['I like ~-~ #.', 'Do you like ~-~ #?', 'My sister does not like ~-~ #.'];
+const A_PLURAL = ['cats','dogs','birds','flowers','apples','books',
+                  'oranges','horses','cars','children'];
+const F_PLURAL = ['I like ~-~ #.', 'My sister loves ~-~ #.', 'Do you like ~-~ #?'];
+const A_WATER = ['Thames','Volga','Nile','Danube','Amazon','Mississippi',
+                 'Black Sea','Red Sea','Baltic Sea',
+                 'Pacific Ocean','Atlantic Ocean','Indian Ocean'];
+const F_WATER = ['We saw ~the~ # from the plane.', 'We flew over ~the~ # at night.'];
 const A_COUNTRY = ['France','Italy','Spain','Germany','Japan','Poland','Turkey','Greece'];
 const A_COUNTRY_THE = ['USA','UK','Netherlands','Philippines'];
-const A_ORD = ['first','second','third','fourth','fifth'];
+const A_ORD = ['first','second','third','fourth','fifth','sixth','seventh','tenth'];
+const F_ORD = ['He lives on ~the~ # floor.', 'This is ~the~ # question in the test.',
+               'We met on ~the~ # day of our trip.', 'She was ~the~ # person to answer.'];
 const A_SUP = [{s:'This is', a:'best', n:'film', t:'in the world'},
                {s:'He is',   a:'tallest', n:'boy', t:'in our class'},
                {s:'This is', a:'biggest', n:'city', t:'in the country'},
                {s:'This is', a:'oldest', n:'house', t:'in our street'},
-               {s:'This is', a:'longest', n:'river', t:'in Europe'}];
+               {s:'This is', a:'longest', n:'river', t:'in Europe'},
+               {s:'She is',  a:'youngest', n:'girl', t:'in the group'},
+               {s:'This is', a:'shortest', n:'way', t:'to the station'},
+               {s:'He is',   a:'strongest', n:'player', t:'in our team'},
+               {s:'This is', a:'most interesting', n:'book', t:'in the library'},
+               {s:'She is',  a:'busiest', n:'person', t:'in our office'}];
 const A_DAYPART = ['morning','afternoon','evening'];
+const F_DAYPART = ['I read books', 'We usually walk in the park',
+                   'She does her homework', 'They watch TV'];
 /* ловушка «звук, а не буква» — у каждой пары своя рамка */
 const A_SOUND = [
   'We waited for ~an~ hour.|Артикль выбирается по <b>звуку</b>, а не по букве: в <b>hour</b> буква h не читается, слышится гласный — поэтому <b>an</b>.',
@@ -1149,17 +1170,26 @@ const A_SOUND = [
   'She is ~a~ university student.|<b>university</b> начинается со звука [ju] — он согласный, поэтому <b>a</b>, а не an.',
   'This is ~a~ useful book.|<b>useful</b> начинается со звука [ju] — согласного, поэтому <b>a</b>.',
   'They live in ~a~ European city.|<b>European</b> начинается со звука [ju] — согласного, поэтому <b>a</b>.',
-  'She wears ~a~ uniform at school.|<b>uniform</b> начинается со звука [ju] — согласного, поэтому <b>a</b>.'
+  'She wears ~a~ uniform at school.|<b>uniform</b> начинается со звука [ju] — согласного, поэтому <b>a</b>.',
+  'We waited for ~an~ hour and a half.|В <b>hour</b> буква h не читается, слышится гласный — поэтому <b>an</b>.',
+  'It was ~an~ unusual day.|<b>unusual</b> начинается с гласного звука [ʌ] — поэтому <b>an</b>. Сравни: <b>a</b> university, там [ju].',
+  'He bought ~an~ umbrella.|В <b>umbrella</b> первый звук гласный [ʌ] — <b>an</b>. На ту же букву <b>a</b> university: там звук [ju], согласный.',
+  'He drives ~a~ used car.|<b>used</b> начинается со звука [ju] — согласного, поэтому <b>a</b>, а не an.'
 ];
 /* учреждение важнее здания: go to school = учиться, а не «прийти в здание» */
 const A_PLACE = [
   'The children go to ~-~ school every day.|<b>go to school</b> — про учёбу, а не про здание: артикля нет.',
   'My father goes to ~-~ work at eight.|<b>go to work</b> — устойчивое сочетание без артикля.',
   'I go to ~-~ bed at ten.|<b>go to bed</b> — устойчивое сочетание без артикля.',
-  'We go to ~-~ class together.|<b>go to class</b> — про занятие, а не про комнату: артикля нет.'
+  'We go to ~-~ class together.|<b>go to class</b> — про занятие, а не про комнату: артикля нет.',
+  'Tom goes to ~-~ school by bus.|<b>go to school</b> — про учёбу: артикля нет, даже если добираешься автобусом.',
+  'She comes home from ~-~ work at six.|<b>from work</b> — то же устойчивое сочетание, что и <b>to work</b>.',
+  'The boys went to ~-~ bed very late.|<b>go to bed</b> — про сон, а не про предмет мебели: артикля нет.',
+  'We never sleep in ~-~ class.|<b>in class</b> — про занятие, а не про комнату: артикля нет.'
 ];
 
 const A = n => n.an ? 'an' : 'a';
+const fill = (frame, w) => frame.replace(/#/g, w);
 const AN_NOTE = n => n.an ? ' Перед гласным звуком — <b>an</b>.' : '';
 
 const ART_RULES = [
@@ -1167,19 +1197,22 @@ const ART_RULES = [
     return pick(A_SUBJ) + ' is ~' + A(n) + '~ ' + n.w + '.|Профессия в единственном числе — <b>a / an</b>.' + AN_NOTE(n); }},
 
   {id:'mention', make(){ const n = pick(A_THING);
-    return 'Yesterday I saw ~' + A(n) + '~ ' + n.w + '. ~The~ ' + n.w + ' was very big.'
+    return fill(pick(F_MENTION), n.w).replace(/~A~/g, '~' + A(n) + '~')
          + '|Первое упоминание — <b>' + A(n) + '</b>, повторное — <b>the</b>: про этот же предмет уже известно.' + AN_NOTE(n); }},
 
   {id:'unique', make(){ const w = pick(A_UNIQUE);
-    return 'Look at ~the~ ' + w + '!|Единственный в своём роде предмет — <b>the ' + w + '</b>.'; }},
+    return fill(pick(F_UNIQUE), w) + '|Единственный в своём роде предмет — <b>the ' + w + '</b>.'; }},
 
   {id:'transport', make(){
     const w = pick(A_TRANSPORT), note = '|<b>by bus / by car / by train</b> — способ передвижения без артикля.';
     return Math.random() < 0.5 ? pick(A_SUBJ) + ' goes to work by ~-~ ' + w + '.' + note
                                : 'We usually travel by ~-~ ' + w + '.' + note; }},
 
-  {id:'meal', make(){ const m = pick(A_MEAL);
-    return 'We have ~-~ ' + m + ' at ' + pick(MEAL_TIME[m]) + '.|Названия приёмов пищи идут без артикля.'; }},
+  {id:'meal', make(){ const m = pick(A_MEAL), r = Math.random();
+    const line = r < 0.5 ? 'We have ~-~ ' + m + ' at ' + pick(MEAL_TIME[m]) + '.'
+               : r < 0.75 ? 'After ~-~ ' + m + ' I always go for a walk.'
+                          : 'She never has ~-~ ' + m + ' at home.';
+    return line + '|Названия приёмов пищи идут без артикля.'; }},
 
   {id:'instrument', make(){ const w = pick(A_INSTR);
     return pick(A_SUBJ) + ' plays ~the~ ' + w + ' very well.|Музыкальные инструменты — с <b>the</b>: play <b>the ' + w + '</b>.'; }},
@@ -1193,13 +1226,13 @@ const ART_RULES = [
     return pick(A_SUBJ) + ' speaks ~-~ ' + w + ' very well.|Названия языков — без артикля: speak <b>' + w + '</b>.'; }},
 
   {id:'plural', make(){ const w = pick(A_PLURAL);
-    return 'I like ~-~ ' + w + '.|Множественное число в общем смысле — без артикля: речь про всех <b>' + w + '</b>, а не про конкретных.'; }},
+    return fill(pick(F_PLURAL), w) + '|Множественное число в общем смысле — без артикля: речь про всех <b>' + w + '</b>, а не про конкретных.'; }},
 
   {id:'mass', make(){ const w = pick(A_MASS);
-    return 'I like ~-~ ' + w + '.|Неисчисляемое в общем смысле — без артикля: <b>' + w + '</b> не считается штуками.'; }},
+    return fill(pick(F_MASS), w) + '|Неисчисляемое в общем смысле — без артикля: <b>' + w + '</b> не считается штуками.'; }},
 
   {id:'water', make(){ const w = pick(A_WATER);
-    return 'We saw ~the~ ' + w + ' from the plane.|Реки, моря и океаны — с <b>the</b>: <b>the ' + w + '</b>.'; }},
+    return fill(pick(F_WATER), w) + '|Реки, моря и океаны — с <b>the</b>: <b>the ' + w + '</b>.'; }},
 
   {id:'country', make(){ const w = pick(A_COUNTRY);
     return pick(A_SUBJ) + ' lives in ~-~ ' + w + '.|Названия большинства стран идут без артикля: in <b>' + w + '</b>.'; }},
@@ -1211,14 +1244,14 @@ const ART_RULES = [
     return x.s + ' ~the~ ' + x.a + ' ' + x.n + ' ' + x.t + '.|Превосходная степень всегда с <b>the</b>: <b>the ' + x.a + '</b>.'; }},
 
   {id:'ordinal', make(){ const w = pick(A_ORD);
-    return 'He lives on ~the~ ' + w + ' floor.|Порядковые числительные — с <b>the</b>: <b>the ' + w + '</b>.'; }},
+    return fill(pick(F_ORD), w) + '|Порядковые числительные — с <b>the</b>: <b>the ' + w + '</b>.'; }},
 
   {id:'sound', make(){ return pick(A_SOUND); }},
 
-  {id:'daypart', make(){
+  {id:'daypart', make(){ const f = pick(F_DAYPART);
     return Math.random() < 0.7
-      ? 'I read books in ~the~ ' + pick(A_DAYPART) + '.|<b>in the morning / afternoon / evening</b> — с артиклем.'
-      : 'I read books at ~-~ night.|<b>at night</b> — без артикля. Сравни: <b>in the</b> morning.'; }}
+      ? f + ' in ~the~ ' + pick(A_DAYPART) + '.|<b>in the morning / afternoon / evening</b> — с артиклем.'
+      : f + ' at ~-~ night.|<b>at night</b> — без артикля. Сравни: <b>in the</b> morning.'; }}
 ];
 
 function articleFrom(src, sk){
@@ -1248,7 +1281,7 @@ function pickTopic(list){
 }
 function makeTopicItem(topic, cfg){
   return topic==='verb' ? makeVerbItem(cfg)
-       : topic==='article' ? (Math.random() < 0.5 ? makeArticleGen() : makeArticleItem(rnd(ART.length)))
+       : topic==='article' ? (Math.random() < 0.15 ? makeArticleItem(rnd(ART.length)) : makeArticleGen())
        : makePronounItem();
 }
 function buildItem(cfg, recent){
