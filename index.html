@@ -544,7 +544,7 @@ const VERBS = [
   {b:'make',p:'made',c:['a cake','a lot of mistakes','tea','a lot of noise','breakfast','a good decision']},
   {b:'take',p:'took', pp:'taken', c:['the bus to work','photos','a shower','an umbrella','the wrong key']},
   {b:'give',p:'gave', pp:'given', c:['presents to the children','good advice','the book to Tom','money to charity']},
-  {b:'see', st:1, noCont:1, p:'saw', pp:'seen', c:['this film','my friends','the doctor','a strange bird','the sea']},
+  {b:'see', st:1, noDur:1, noCont:1, p:'saw', pp:'seen', c:['this film','my friends','the doctor','a strange bird','the sea']},
   {b:'come',p:'came', pp:'come', c:['home late','to the party','back from London','early']},
   {b:'say', p:'said',c:['nothing','a few words','goodbye','sorry']},
   {b:'tell',p:'told',c:['the truth','a funny story','the news','a lie']},
@@ -569,7 +569,7 @@ const VERBS = [
   {b:'teach',p:'taught', dur:1, c:['English','maths at school','children']},
   {b:'wear',p:'wore', pp:'worn', c:['a warm coat','jeans','glasses','a uniform']},
   {b:'win', noCont:1, p:'won', dbl:1, c:['the game','the competition','first prize']},
-  {b:'lose',p:'lost',c:['the keys','the game','the tickets']},
+  {b:'lose', noCont:1,p:'lost',c:['the keys','the game','the tickets']},   /* «is losing the keys» — не процесс */
   {b:'meet',p:'met', c:['friends in the park','Tom at the station','new people']},
   {b:'pay', p:'paid',c:['for the tickets','the bill','a lot of money']},
   {b:'send',p:'sent',c:['emails','a letter to Tom','presents','photos']},
@@ -581,8 +581,8 @@ const VERBS = [
   {b:'fall', noCont:1,p:'fell', pp:'fallen', c:['off the bike','asleep quickly','on the ice']},
   {b:'fly', p:'flew', pp:'flown', c:['to Paris','very high','over the mountains']},
   {b:'forget', noCont:1,p:'forgot', pp:'forgotten', dbl:1, c:['the keys','the address','the password']},
-  {b:'hear', st:1, noCont:1, p:'heard',c:['a strange noise','the news','music']},
-  {b:'hold', st:1, p:'held',c:['the door','a party','the flag']},
+  {b:'hear', st:1, noDur:1, noCont:1, p:'heard',c:['a strange noise','the news','music']},
+  {b:'hold', st:1, noDur:1, p:'held',c:['the door','a party','the flag']},
   {b:'keep', st:1, p:'kept',c:['the money in the bank','a diary','the letters']},
   {b:'understand', st:1, noCont:1, p:'understood',c:['the rule','this question','French']},
   {b:'spend',p:'spent',c:['a lot of money','the holidays in Spain','two hours there']},
@@ -679,6 +679,11 @@ const FORMULA_BE = {
 };
 const TENSES_ALL = Object.keys(TENSE_RU);
 const isCont = t => /C$/.test(t);
+/* st говорит «не бывает в Continuous» — поэтому «now» у таких глаголов однозначно
+   Present Simple. Но длительность в Perfect берут не все: «have known for two years»
+   — да, «have seen this film for ages» — нет; это и есть noDur. */
+const stMark = (v, t) => (v && v.st && !(v.noDur && t === 'presP')) ? MARK_ST[t] : null;
+const SPAN_C = /\b(all night|eight hours|very little|two hours there)\b/;
 const isPerfCont = t => /PC$/.test(t);
 const isPerf = t => /P$/.test(t) || isPerfCont(t);
 const isSimple = t => t==='pres' || t==='past';
@@ -809,7 +814,7 @@ function diagnoseVerb(input, dx){
 /* примеры маркеров того времени, которое человек написал по ошибке */
 function markerHints(dx, t){
   const list = dx.be ? (MARK_BE[t] || [])
-             : (dx.v && dx.v.st && MARK_ST[t]) ? MARK_ST[t] : (MARK[t] || []);
+             : (stMark(dx.v, t) || MARK[t] || []);
   return list.slice(0, 2);
 }
 /* Ступень 1 — куда смотреть: вопрос про предложение, не про ответ.
@@ -856,7 +861,7 @@ const B = (ans,hint) => ({t:'blank', a:ans, hint:hint||''});
 
 function markerFor(v, tense, be){
   if(be && MARK_BE[tense]) return pick(MARK_BE[tense]);
-  if(!be && v.st && MARK_ST[tense]) return pick(MARK_ST[tense]);
+  if(!be){ const m = stMark(v, tense); if(m) return pick(m); }
   return pick(MARK[tense]);
 }
 
@@ -882,6 +887,10 @@ function makeVerbItem(cfg){
   if(form !== 'aff') pool = pool.filter(x => !/\bnothing\b/.test(x));   /* без двойного отрицания */
   if(tense !== 'pres' && tense !== 'past' && tense !== 'fut')             /* «work at nine» спорит с маркером */
     pool = pool.filter(x => !/\bat (five|six|seven|eight|nine|ten|eleven)\b/.test(x));
+  /* Дополнение, называющее срок или объём, спорит с Continuous: маркер там либо
+     момент («at five o'clock tomorrow»), либо своя длительность («since Monday»).
+     «He slept eight hours yesterday» — верно, «is sleeping eight hours» — нет. */
+  if(isCont(tense)) pool = pool.filter(x => !SPAN_C.test(x));
   const comp = pick(pool.length ? pool : (be ? BE.c : v.c));
   const mark = markerFor(v || {}, tense, be);
   const tag  = TENSE_RU[tense] + ' · ' + FORM_RU[form];
@@ -1859,7 +1868,7 @@ function selfTest(){
                             : (t === 'pastP' || t === 'futP') ? !v.noPerf
                             : true;
   const markerSet = (v, t, be) => be ? (MARK_BE[t] || [])
-                                     : (v.st && MARK_ST[t]) ? MARK_ST[t] : (MARK[t] || []);
+                                     : (stMark(v, t) || MARK[t] || []);
   const ambig = {};
   const collect = (v, tenses, be, who) => {
     const m2t = {};
@@ -2014,6 +2023,15 @@ function selfTest(){
     if(!it.label) out.push('FAIL нет label: '+txt);
     if(!it.sk || !it.sk.length || it.sk.some(k => !k || /undefined|null/.test(k)))
       out.push('FAIL плохой sk: ' + JSON.stringify(it.sk) + ' — ' + txt);
+    if(it.dx && it.dx.kind === 'verb'){
+      const full = it.parts.map(p=>p.t==='text'?p.v:p.a[0]).join('');
+      /* два указания на срок в одной строке спорят друг с другом */
+      if(isCont(it.dx.tense) && SPAN_C.test(full))
+        out.push('FAIL срок в дополнении при Continuous: "' + full + '"');
+      /* глагол с noDur не берёт маркеры длительности ни в каком времени */
+      if(it.dx.v && it.dx.v.noDur && MARK_ST.presP.indexOf(it.marker) >= 0)
+        out.push('FAIL маркер длительности у «' + it.dx.v.b + '»: "' + full + '"');
+    }
   }
   ART.forEach((s,i)=>{
     if(s.split('|').length!==2) out.push('FAIL артикль без пояснения #'+i);
