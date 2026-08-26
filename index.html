@@ -918,14 +918,16 @@ function makeVerbItem(cfg){
 /* ==================================================================
    2. Местоимения: I — my — me
    ================================================================== */
+/* ru — подсказка в скобках. По-русски, а не по-английски: английская форма
+   в скобках у трети заданий совпадала бы с ответом слово в слово. */
 const PRON = [
-  {s:'I',   p:'my',   o:'me',   a:'i'},
-  {s:'you', p:'your', o:'you',  a:'pl'},
-  {s:'he',  p:'his',  o:'him',  a:'3'},
-  {s:'she', p:'her',  o:'her',  a:'3'},
-  {s:'it',  p:'its',  o:'it',   a:'3'},
-  {s:'we',  p:'our',  o:'us',   a:'pl'},
-  {s:'they',p:'their',o:'them', a:'pl'}
+  {s:'I',   p:'my',   o:'me',   a:'i',  ru:'я'},
+  {s:'you', p:'your', o:'you',  a:'pl', ru:'ты / вы'},
+  {s:'he',  p:'his',  o:'him',  a:'3',  ru:'он'},
+  {s:'she', p:'her',  o:'her',  a:'3',  ru:'она'},
+  {s:'it',  p:'its',  o:'it',   a:'3',  ru:'оно'},
+  {s:'we',  p:'our',  o:'us',   a:'pl', ru:'мы'},
+  {s:'they',p:'their',o:'them', a:'pl', ru:'они'}
 ];
 /* # — пропуск, %verb% — глагол, который согласуется с местоимением */
 const PT = [
@@ -975,10 +977,12 @@ function conj(base, agr){
   if(base==='have') return agr==='3' ? 'has' : 'have';
   return agr==='3' ? thirdPerson(base) : base;
 }
-function makePronounItem(){
-  const tpl = pick(PT);
-  const pool = PRON.filter(p => tpl.only ? tpl.only.includes(p.s) : !(tpl.no||[]).includes(p.s));
-  const pr = pick(pool);
+function pronPool(tpl){
+  return PRON.filter(p => tpl.only ? tpl.only.includes(p.s) : !(tpl.no||[]).includes(p.s));
+}
+function makePronounItem(tplIn, prIn){
+  const tpl = tplIn || pick(PT);
+  const pr  = prIn  || pick(pronPool(tpl));
   const ans = tpl.k==='s' ? pr.s : tpl.k==='p' ? pr.p : pr.o;
   const text = tpl.x.replace(/%(\w+)%/g, (_,v)=>conj(v, pr.a));
   const i = text.indexOf('#');
@@ -995,7 +999,7 @@ function makePronounItem(){
 
   return {topic:'pronoun', tag:'Местоимения · '+PK_RU[tpl.k], label:'Местоимения', sk:['p:'+tpl.k],
     dx:{kind:'pron', k:tpl.k, pr:pr},
-    parts:[T(before), B([shown], pr.s), T(after)], note};
+    parts:[T(before), B([shown], pr.ru), T(after)], note};
 }
 
 /* ==================================================================
@@ -1771,6 +1775,21 @@ function selfTest(){
   PRON.forEach(pr=>{
     ['s','p','o'].forEach(k=>{
       if(diagnosePron(pr[k], {pr:pr}).indexOf(k) < 0) out.push('FAIL разбор не узнал местоимение ' + pr[k]);
+    });
+  });
+  /* подсказка в скобках не имеет права быть ответом: перебираем все пары */
+  PT.forEach(tpl=>{
+    pronPool(tpl).forEach(pr=>{
+      const it = makePronounItem(tpl, pr);
+      it.parts.forEach(p=>{
+        if(p.t !== 'blank') return;
+        const где = '"' + p.a[0] + '" в «' + tpl.x + '»';
+        if(!p.hint) out.push('FAIL пропуск без подсказки: ' + где);
+        else if(/[A-Za-z]/.test(p.hint))
+          out.push('FAIL подсказка по-английски — так она выдаёт форму: ' + где + ' (' + p.hint + ')');
+        else if(normAns(p.hint) === normAns(p.a[0]))
+          out.push('FAIL подсказка совпала с ответом: ' + где);
+      });
     });
   });
   /* маркеры-примеры для ошибочного времени обязаны существовать */
