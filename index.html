@@ -940,7 +940,7 @@ const PT = [
   {k:'s', x:'# %play% football on Sundays.',  no:['it']},
   {k:'s', x:'# %want% to go home.',           no:['it']},
   {k:'s', x:'# %be% very tired today.'},
-  {k:'s', x:'# %be% my best friend.'},
+  {k:'s', x:'# %be% my best friend.',       only:['you','he','she']},
   {k:'s', x:'# %be% always late.'},
   {k:'s', x:'# %read% books in English.',     no:['it']},
   {k:'p', x:'This is # sister.',              no:['it']},
@@ -956,19 +956,19 @@ const PT = [
   {k:'p', x:'# teacher is very strict.',      no:['it']},
   {k:'p', x:'Where are # glasses?',           no:['it']},
   {k:'p', x:'The cat is washing # face.',     only:['it']},
-  {k:'o', x:'Please help #.',                 no:['it']},
-  {k:'o', x:'I saw # yesterday.'},
-  {k:'o', x:'Can you call # tomorrow?',       no:['it']},
-  {k:'o', x:'She gave # a present.',          no:['it']},
-  {k:'o', x:'Look at #!'},
-  {k:'o', x:'Tom is waiting for #.',          no:['it']},
-  {k:'o', x:'Listen to # carefully.',         no:['it']},
-  {k:'o', x:'This letter is for #.',          no:['it']},
-  {k:"o", x:"Don't tell # about the party.",  no:['it']},
-  {k:'o', x:'My father drove # to school.',   no:['it']},
-  {k:'o', x:'The teacher asked # a question.',no:['it']},
-  {k:'o', x:'Come with #, please.',           no:['it','you']},
-  {k:'o', x:"I don't know #."}
+  {k:'o', x:'Please help #.',                 no:['it'], subj:'you'},
+  {k:'o', x:'I saw # yesterday.',                        subj:'I'},
+  {k:'o', x:'Can you call # tomorrow?',       no:['it'], subj:'you'},
+  {k:'o', x:'She gave # a present.',          no:['it'], subj:'-'},
+  {k:'o', x:'Look at #!',                                subj:'you'},
+  {k:'o', x:'Tom is waiting for #.',          no:['it'], subj:'-'},
+  {k:'o', x:'Listen to # carefully.',         no:['it'], subj:'you'},
+  {k:'o', x:'This letter is for #.',          no:['it'], subj:'-'},
+  {k:"o", x:"Don't tell # about the party.",  no:['it'], subj:'you'},
+  {k:'o', x:'My father drove # to school.',   no:['it'], subj:'-'},
+  {k:'o', x:'The teacher asked # a question.',no:['it'], subj:'-'},
+  {k:'o', x:'Come with #, please.',           no:['it'], subj:'you'},
+  {k:"o", x:"I don't know #.",                           subj:'I'}
 ];
 const PK_RU = {s:'подлежащее', p:'притяжательное', o:'дополнение'};
 
@@ -977,8 +977,16 @@ function conj(base, agr){
   if(base==='have') return agr==='3' ? 'has' : 'have';
   return agr==='3' ? thirdPerson(base) : base;
 }
+/* Дополнение не может указывать на то же лицо, что и подлежащее: там нужно
+   возвратное (help yourself, I saw myself), а тренажёр их не спрашивает.
+   'you' стоит и у повелительного наклонения — подлежащее там подразумевается.
+   Пересечение, а не равенство: «I saw us» ломается ровно так же, как «I saw me».
+   У третьего лица запрета нет — «She gave her a present» про двух разных. */
+const SAME_REF = {I:['I','we'], we:['I','we'], you:['you']};
 function pronPool(tpl){
-  return PRON.filter(p => tpl.only ? tpl.only.includes(p.s) : !(tpl.no||[]).includes(p.s));
+  const ban = (tpl.k === 'o' && SAME_REF[tpl.subj]) || [];
+  return PRON.filter(p => (tpl.only ? tpl.only.includes(p.s) : !(tpl.no||[]).includes(p.s))
+                       && ban.indexOf(p.s) < 0);
 }
 function makePronounItem(tplIn, prIn){
   const tpl = tplIn || pick(PT);
@@ -1777,10 +1785,33 @@ function selfTest(){
       if(diagnosePron(pr[k], {pr:pr}).indexOf(k) < 0) out.push('FAIL разбор не узнал местоимение ' + pr[k]);
     });
   });
+  /* Возвратные формы тренажёр не спрашивает, значит и поводов для них быть
+     не должно. Проверка идёт по готовой строке и не знает про SAME_REF:
+     подлежащее в тексте видно, поэтому таблицу можно не спрашивать.
+     У повелительного наклонения подлежащего в строке нет — оно дописывается
+     из subj, и тогда проверка работает и там. */
+  const REFL = [
+    [/\bI\b/,   /\b(me|us)\b/,  'I … me/us'],
+    [/\bWe\b/i, /\b(me|us)\b/,  'we … me/us'],
+    [/\byou\b/i,/\byou\b.*\byou\b/i, 'you … you']
+  ];
+  PT.forEach(tpl=>{
+    if(tpl.k === 'o' && !tpl.subj)
+      out.push('FAIL объектный шаблон без подлежащего: «' + tpl.x + '»');
+    if(!pronPool(tpl).length)
+      out.push('FAIL шаблону нечего подставить: «' + tpl.x + '»');
+  });
   /* подсказка в скобках не имеет права быть ответом: перебираем все пары */
   PT.forEach(tpl=>{
     pronPool(tpl).forEach(pr=>{
       const it = makePronounItem(tpl, pr);
+      const txt = it.parts.map(p => p.t === 'text' ? p.v : p.a[0]).join('');
+      const probe = (tpl.subj && tpl.subj !== '-' && !new RegExp('\\b' + tpl.subj + '\\b','i').test(tpl.x))
+                  ? tpl.subj + ' ' + txt : txt;
+      REFL.forEach(r=>{
+        const bad = r[2] === 'you … you' ? r[1].test(probe) : (r[0].test(probe) && r[1].test(probe));
+        if(bad) out.push('FAIL нужна возвратная форма (' + r[2] + '): «' + txt + '»');
+      });
       it.parts.forEach(p=>{
         if(p.t !== 'blank') return;
         const где = '"' + p.a[0] + '" в «' + tpl.x + '»';
