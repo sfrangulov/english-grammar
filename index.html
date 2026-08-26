@@ -278,6 +278,17 @@ main{
 .rbreak li i{grid-column:1 / -1; height:4px; background:var(--surface-2)}
 .rbreak li i::before{content:''; display:block; height:100%; width:var(--p); background:var(--ok)}
 .result .actions{margin-top:var(--s3)}
+.wall{list-style:none; margin:0; padding:0; display:grid; gap:1px; width:100%; max-width:640px}
+.wall li{
+  font-size:var(--t2); line-height:1.45; color:var(--muted);
+  padding:var(--s2) var(--s3); border-left:3px solid var(--ok);
+  background:var(--surface);
+}
+.wall li.bad{border-left-color:var(--bad); color:var(--ink)}
+.wall li .fill{color:var(--ok-ink); font-weight:600}
+.wall li.bad .fill{color:var(--bad-ink)}
+.wall li .fill.zero{display:inline-block; width:18px; height:2px; vertical-align:.3em; background:currentColor}
+.wall li .gh{color:var(--faint)}
 
 /* ============================== действия ============================== */
 .actions{display:flex; align-items:center; gap:var(--s2)}
@@ -1434,7 +1445,7 @@ function boot(){
   /* window — последние 20 ответов за всё занятие, не обнуляется на границе раунда:
      на втором задании раунда «50%» — это шум, а окно уже устоялось */
   const st = {total:0, correct:0, window:[], item:null, checked:false, recent:[], mistakes:[],
-              round:{idx:0, marks:[], by:{}, parked:0}, ghosts:[], attempt:0, timer:0, seq:0,
+              round:{idx:0, marks:[], by:{}, parked:0, wall:[]}, ghosts:[], attempt:0, timer:0, seq:0,
               lapses:{}, lastGhost:false, sk:{}};
   /* Ключи освоенности: тема, время у глагола, падеж у местоимения, правило
      у артикля. По ним же идёт подача, когда включена адаптивность. */
@@ -1717,6 +1728,7 @@ function boot(){
 
   /* ---- итог задания: считаем один раз, засчитываем только первую попытку ---- */
   function settle(it, firstTry){
+    st.round.wall.push({html: answerHTML(it), ok: firstTry, ghost: !!it.ghost});
     st.total++;
     st.seq++;
     st.round.idx++;
@@ -1841,7 +1853,11 @@ function boot(){
       + (r.parked ? '<p class="note">Отложено: ' + r.parked
          + '. Эти задания не пошли с трёх подходов — тренажёр перестал их возвращать, '
          + 'чтобы раунд не превратился в карусель.</p>' : '')
-      + '<div class="actions"><button class="btn" id="again">Ещё раунд</button></div>';
+      + '<div class="actions"><button class="btn" id="again">Ещё раунд</button></div>'
+      /* стена — под кнопкой: до «Ещё раунд» не должно быть двадцати строк прокрутки */
+      + (r.wall.length ? '<ul class="wall">' + r.wall.map(x =>
+          '<li class="' + (x.ok ? 'ok' : 'bad') + '">' + x.html
+          + (x.ghost ? ' <span class="gh">· повтор</span>' : '') + '</li>').join('') + '</ul>' : '');
     drill.hidden = true; result.hidden = false;
     $('again').addEventListener('click', startRound);
     $('again').focus();
@@ -1849,7 +1865,7 @@ function boot(){
 
   function startRound(){
     clearTimer();
-    st.round = {idx:0, marks:[], by:{}, parked:0};
+    st.round = {idx:0, marks:[], by:{}, parked:0, wall:[]};
     drill.hidden = false; result.hidden = true;
     renderStats();
     next();
